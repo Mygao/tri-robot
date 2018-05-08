@@ -6,9 +6,9 @@
 #include <termios.h>
 #include <fcntl.h>
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 
 static int luagetch_block(lua_State *L){
@@ -60,10 +60,10 @@ static const struct luaL_Reg getch_lib [] = {
 };
 
 int luaopen_getch (lua_State *L) {
-#if LUA_VERSION_NUM == 502
-	  luaL_newlib(L, getch_lib);
-#else
+#if LUA_VERSION_NUM == 501
 	luaL_register(L, "getch", getch_lib);
+#else
+	luaL_newlib(L, getch_lib);
 #endif
   return 1;
 }
