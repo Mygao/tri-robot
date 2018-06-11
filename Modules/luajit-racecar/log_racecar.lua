@@ -88,18 +88,18 @@ local botFsm = has_cofsm and cofsm.new{
 --
 local pkt_req_values = has_vesc and
   string.char(unpack(vesc.sensors()))
-local JOYSTICK_TO_MILLIAMPS = 40000 / 32767
+local JOYSTICK_TO_MILLIAMPS = 40000 / -32767
 local JOYSTICK_TO_SERVO = 1 / (2 * 32767)
-local JOYSTICK_TO_DUTY = 11 / 32767
-local JOYSTICK_TO_RPM = 30000 / 32767
+local JOYSTICK_TO_DUTY = 11 / -32767
+local JOYSTICK_TO_RPM = 30000 / -32767
 --
 local motor_modes = {'pwm', 'mA', 'rpm'}
 local motor_mode = motor_modes[1]
 if flags.motor_mode then
-  local valid_mode = false
   for _, mode in ipairs(motor_modes) do
     if mode == flags.motor_mode then
       motor_mode = mode
+      print("Manually setting motor_mode:", motor_mode)
       break
     end
   end

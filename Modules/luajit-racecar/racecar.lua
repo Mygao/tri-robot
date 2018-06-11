@@ -157,7 +157,7 @@ function lib.parse_arg(arg, use_dev)
     while i<=#arg do
       local a = arg[i]
       i = i + 1
-      local flag = a:match"^--(%w+)"
+      local flag = a:match"^--([%w_]+)"
       if flag then
         local val = arg[i]
         if not val then break end
