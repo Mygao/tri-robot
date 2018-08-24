@@ -1,0 +1,35 @@
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+/* Simple two column setup */
+.row {
+  display: flex;
+}
+.column {
+  flex: 50%;
+}
+
+/* Canvas */
+#stage {
+  /*border: 1px solid blue;*/
+  /* For overlaying */
+  position:absolute;
+  top:0px;
+  left:0px;
+}
+#environment {
+  /*border: 1px solid red;*/
+  background-color: #DDD;
+  /* For overlaying */
+/*  position:absolute;
+  top:0px;
+  left:0px;*/
+  /* Need resize handling for this one */
+  display:flex; 
+}
+
+polyline {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SUR</title>
+<link rel="stylesheet" type="text/css" href="rcleft.css" media="screen" />
+<script type="application/javascript" src="/msgpack5.min.js"></script>
+<script type="application/javascript" src="/plotly.min.js"></script>
+<script type="application/javascript" src="/rcleft.js"></script>
+</head>
+<body>
+  <div class="row">
+    <div class="column">
+      <!--  width="576" height="720" -->
+      <svg id="environment" viewBox="-3 -6 8 10">
+      <!-- preserveAspectRatio="xMidYMid meet" -->
+        <g id="observers"></g>
+        <g id="vehicles"></g>
+        <g id="obstacles"></g>
+        <g id="lanes"></g>
+      </svg>
+      <canvas id="stage"></canvas>
+    </div>
+    <div class="column">
+      <div id="info"></div>
+      <div id="graph"></div>
+    </div>
+  </div>
+</body>
+</html>
