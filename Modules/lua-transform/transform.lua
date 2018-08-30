@@ -24,6 +24,29 @@ local mt = {
   end
 }
 
+local function rot2D(x, y, th)
+  local c, s = cos(th), sin(th)
+  return x * c + y * s, x * s - y * c
+end
+lib.rot2D = rot2D
+
+local function tf2D(x, y, th, tx, ty)
+  local x1, y1 = rot2D(x, y, th)
+  return x1 + tx, y1 + ty
+end
+lib.tf2D = tf2D
+
+local function rot2Dcs(x, y, c, s)
+  return x * c + y * s, x * s - y * c
+end
+lib.rot2Dcs = rot2Dcs
+local function tf2Dcs(x, y, c, s, tx, ty)
+  local x1, y1 = rot2D(x, y, c, s)
+  return x1 + tx, y1 + ty
+end
+lib.tf2Dcs = tf2Dcs
+
+
 function lib.inv(a)
   local p = {a[1][4], a[2][4], a[3][4]}
   local r = {
