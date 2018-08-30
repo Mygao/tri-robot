@@ -11,7 +11,9 @@ function vector.ones(n)
 end
 
 local function zeros(n)
-  n = n or 0
+  if type(n) ~= 'number' then
+    return setmetatable({}, mt)
+  end
   local t = {}
   for i = 1, n do t[i] = 0 end
   return setmetatable(t, mt)
@@ -19,19 +21,11 @@ end
 vector.zeros = zeros
 
 local function new(t)
-  local ty = type(t)
-  if ty=='number' then
+  local tp = type(t)
+  if tp=='number' then
     return zeros(t)
-  elseif ty=='userdata' then
-    local n = #t
-    if type(n)~='number' then n = n[1] end
-    local tt = {}
-    for i=1,n do tt[i] = t[i] end
-    t = tt
-  elseif ty~='table' then
-    t = {}
   end
-  return setmetatable(t, mt)
+  return setmetatable(tp=='table' and t or {}, mt)
 end
 vector.new = new
 
@@ -79,17 +73,17 @@ local function iadd(v1, v2)
 end
 vector.iadd = iadd
 
-local function norm(v1)
-  local s = 0
-  for i = 1, #v1 do s = s + pow(v1[i], 2) end
-  return sqrt(s)
-end
-vector.norm = norm
-function vector.normsq(v1)
+local function norm_sq(v1)
   local s = 0
   for i = 1, #v1 do s = s + pow(v1[i], 2) end
   return s
 end
+vector.norm_sq = norm_sq
+
+local function norm(v1)
+  return sqrt(norm_sq(v1))
+end
+vector.norm = norm
 
 local function sum(v1, w)
   local s
@@ -114,10 +108,11 @@ local function rsum(v, idx, initial)
 end
 vector.rsum = rsum
 
-local function sub(v1, v2)
-  local v = {}
-  for i = 1, #v1 do v[i] = v1[i] - v2[i] end
-  return setmetatable(v, mt)
+local function sub(self, v2)
+  local tbl = {}
+  -- for i = 1, #self do tbl[i] = self[i] - v2[i] end
+  for i,v in ipairs(self) do tbl[i] = v - v2[i] end
+  return setmetatable(tbl, mt)
 end
 vector.sub = sub
 
@@ -134,32 +129,26 @@ local function divnum(v1, a)
   return setmetatable(v, mt)
 end
 -- In-place division
-local function idivnum(v, a)
-  for i = 1, #v do v[i] = v[i] / a end
-  return v
+local function idivnum(self, a)
+  for i = 1, #self do self[i] = self[i] / a end
+  return self
 end
 vector.idivnum = idivnum
 
-function vector.unit(v1)
-  local m = norm(v1)
-  return (m > 0) and divnum(v1, m) or zeros(#v1)
-end
-
-
-local function dot(v1, v2)
+local function dot(self, v2)
   local s = 0
-  for i = 1, #v1 do s = s + v1[i] * v2[i] end
+  for i = 1, #self do s = s + self[i] * v2[i] end
   return s
 end
 vector.dot = dot
 
-local function mul(v1, v2)
-  if type(v2) == "number" then
-    return mulnum(v1, v2)
-  elseif type(v1) == "number" then
-    return mulnum(v2, v1)
+local function mul(self, v)
+  if type(v) == "number" then
+    return mulnum(self, v)
+  elseif type(self)=='number' then
+    return mulnum(v, self)
   else
-    return dot(v1, v2)
+    return dot(self, v)
   end
 end
 vector.mul = mul
@@ -168,9 +157,14 @@ local function unm(v1)
   return mulnum(v1, -1)
 end
 
-local function eq(v1, v2)
-	if #v1~=#v2 then return false end
-  for i,v in ipairs(v1) do
+function vector.unit(v1)
+  local m = norm(v1)
+  return (m > 0) and divnum(v1, m) or zeros(#v1)
+end
+
+local function eq(self, v2)
+  if #self~=#v2 then return false end
+  for i,v in ipairs(self) do
     if v~=v2[i] then return false end
   end
   return true
@@ -187,14 +181,57 @@ local function div(v1, v2)
   end
 end
 
+-- Ability for a weighted mean of vectors
+function vector.mean(t, w)
+  local s = zeros(#t[1])
+  if type(w)=='table' then
+    for i,v in ipairs(t) do
+      iadd(s, mulnum(v, w[i]))
+    end
+  else
+    for i=1,#t do iadd(s, t[i]) end
+    idivnum(s, #t)
+  end
+  return setmetatable(s, mt)
+end
+
+-- Distance between points
+local function distance_sq(self, v)
+  return norm_sq(sub(v, self))
+end
+vector.distance_sq = distance_sq
+
+local function distance(self, v)
+  return norm(sub(v, self))
+end
+vector.distance = distance
+
+-- Project vector self onto vector v
+local function project(self, v)
+  local s = dot(self, v) / norm(v)
+  return mulnum(v, s)
+end
+vector.project = project
+
+-- Rejection vector self onto vector v
+function vector.reject(self, v)
+  return sub(self, project(self, v))
+end
+
+-- local function cross(u, v)
+--   local k = u[1] * v[2], -1 * u[2] * v[1]
+
+--   return {i, j, k}
+-- end
+-- vector.cross = cross
+
 local function v_tostring(v1, formatstr)
   formatstr = formatstr or "%g"
-  local str = "{"..string.format(formatstr, v1[1] or 0/0)
-  for i = 2, #v1 do
-    str = str..", "..string.format(formatstr,v1[i])
+  local tbl = {}
+  for i = 1, #v1 do
+    table.insert(tbl, string.format(formatstr,v1[i]))
   end
-  str = str.."}"
-  return str
+  return "{"..table.concat(tbl, ', ').."}"
 end
 
 ----[[
@@ -236,20 +273,6 @@ function vector.pose(t)
   return setmetatable({0,0,0}, mt_pose)
 end
 
--- Ability for a weighted mean of vectors
-function vector.mean(t, w)
-  local s = zeros(#t[1])
-  if type(w)=='table' then
-    for i,v in ipairs(t) do
-      iadd(s, mulnum(v, w[i]))
-    end
-  else
-    for i=1,#t do iadd(s, t[i]) end
-    idivnum(s, #t)
-  end
-  return setmetatable(s, mt)
-end
-
 -- Pose vector
 mt_pose.__add = add
 mt_pose.__sub = sub
@@ -269,5 +292,6 @@ mt.__mul = mul
 mt.__div = div
 mt.__unm = unm
 mt.__tostring = v_tostring
+mt.__index = function(t, k) return vector[k] end
 
 return vector
