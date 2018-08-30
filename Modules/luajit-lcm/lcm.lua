@@ -15,8 +15,8 @@ local function register(self, channel, fn, decode)
 end
 
 -- Update this LCM channel
-local function update(self)
-  skt.poll({self.skt_lcm.fd})
+local function update(self, timeout)
+  if timeout~=0 then skt.poll({self.skt_lcm.fd}, timeout) end
   local pkts, err = self.skt_lcm:recvmmsg(false)
   if not pkts then return false, err end
   for i, pkt in ipairs(pkts) do
