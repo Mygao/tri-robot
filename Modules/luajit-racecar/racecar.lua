@@ -60,10 +60,10 @@ local counts, times = {}, {}
 local function announce(channel, str, cnt, t_us)
   if not (skt_mcl and channel) then
     return false, "No channel/socket"
-  elseif type(str)~='string' then
+  elseif type(str)=='table' then
     str = has_logger and logger.encode(str)
   end
-  if not str then
+  if type(str)~='string' then
     return false, "Bad serialize"
   end
   cnt = tonumber(cnt)
@@ -211,7 +211,9 @@ function lib.listen(cb_tbl)
   assert(has_lcm, lcm)
   local lcm_obj = assert(lcm.init(MCL_ADDRESS, MCL_PORT))
   if type(cb_tbl)=='table' then
-    for ch, fn in pairs(cb_tbl) do lcm_obj:register(ch, fn, logger.decode) end
+    for ch, fn in pairs(cb_tbl) do
+      assert(lcm_obj:register(ch, fn, logger.decode))
+    end
   end
   while lib.running do
     lcm_obj:update()
