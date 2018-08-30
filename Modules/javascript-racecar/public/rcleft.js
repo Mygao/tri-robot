@@ -79,8 +79,11 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   ws.onmessage = (e) => {
     // console.log(e.data);
-    const msg = munpack(new Uint8Array(e.data));
+    var msg = munpack(new Uint8Array(e.data));
     // console.log(msg);
+    if (msg.risk !== undefined) {
+      msg = msg.risk;
+      }
 
     const observer = msg.observer;
     if (observer) {
@@ -136,32 +139,31 @@ document.addEventListener("DOMContentLoaded", function(event) {
         el.setAttributeNS(null, 'points', points);
       });
       }
-    // const lanes = msg.lanes;
-    // if (lanes) {
-    //   var lanes_els = lanes_svg.getElementsByClassName('lane');
-    //   lanes.forEach((l, i) => {
-    //     const points =
-    //         l.map((coord, i) => { return coord2svg(coord).join(); }).join('
-    //         ');
-    //     var el = lanes_els.item(i);
-    //     if (!el) {
-    //       el = document.createElementNS("http://www.w3.org/2000/svg",
-    //                                     'polyline');
-    //       el.setAttributeNS(null, 'class', 'lane');
-    //       el.style.fill = "none";
-    //       // el.style.stroke = "#0F0";
-    //       el.style.stroke = d3colors(i);
-    //       el.style.strokeWidth = "0.1";
-    //       lanes_svg.appendChild(el);
-    //     }
-    //     el.setAttributeNS(null, 'points', points);
-    //   });
-    //   }
+    const lanes = msg.lanes;
+    if (lanes) {
+      var lanes_els = lanes_svg.getElementsByClassName('lane');
+      lanes.forEach((l, i) => {
+        const points =
+            l.map((coord, i) => { return coord2svg(coord).join(); }).join(' ');
+        var el = lanes_els.item(i);
+        if (!el) {
+          el = document.createElementNS("http://www.w3.org/2000/svg",
+                                        'polyline');
+          el.setAttributeNS(null, 'class', 'lane');
+          el.style.fill = "none";
+          // el.style.stroke = "#0F0";
+          el.style.stroke = d3colors(i);
+          el.style.strokeWidth = "0.1";
+          lanes_svg.appendChild(el);
+        }
+        el.setAttributeNS(null, 'points', points);
+      });
+      }
 
-    // const beliefs = msg.beliefs;
+    const beliefs = msg.beliefs;
     // const beliefs = msg.valid;
     // const beliefs = msg.attendant_risk;
-    const beliefs = msg.unseen_risk;
+    // const beliefs = msg.unseen_risk;
     // const beliefs = msg.total_risk;
     const waypoints = msg.waypoints;
     if (beliefs && waypoints) {
