@@ -6,6 +6,7 @@
 <link rel="stylesheet" type="text/css" href="rcleft.css" media="screen" />
 <script type="application/javascript" src="/msgpack5.min.js"></script>
 <script type="application/javascript" src="/plotly.min.js"></script>
+<script type="application/javascript" src="/three.min.js"></script>
 <script type="application/javascript" src="/rcleft.js"></script>
 </head>
 <body>
@@ -37,38 +38,27 @@
       </svg>
       <canvas id="stage"></canvas>
     </div>
-    <div class="column">
+    <div id="right" class="column">
       <div id="graph"></div>
       <form id="likelihoodSelection" name="likelihoodSelection">
         <fieldset>
           <legend>Select likelihood</legend>
-          <div>
-              <input type="radio" id="visibilities" name="likelihood" />
-              <label for="visibilities">Visibilities</label>
-          </div>
-          <div>
-              <input type="radio" id="beliefs" name="likelihood" checked />
-              <label for="beliefs">Belief State</label>
-          </div>
-          <div>
-              <input type="radio" id="unseen_risk" name="likelihood" />
-              <label for="unseen_risk">Unseen</label>
-          </div>
-          <div>
-              <input type="radio" id="brake_rates" name="likelihood" />
-              <label for="brake_rates">Brake Rate</label>
-          </div>
-          <div>
-              <input type="radio" id="valid" name="likelihood" />
-              <label for="valid">Valid</label>
-          </div>
-          <div>
-              <input type="radio" id="total_risk" name="likelihood" />
-              <label for="total_risk">Total Risk</label>
-          </div>
+          <input type="radio" id="visibilities" name="likelihood" />
+          <label for="visibilities">Visibilities</label>
+          <input type="radio" id="beliefs" name="likelihood" checked />
+          <label for="beliefs">Belief State</label>
+          <input type="radio" id="unseen_risk" name="likelihood" />
+          <label for="unseen_risk">Unseen</label>
+          <input type="radio" id="brake_rates" name="likelihood" />
+          <label for="brake_rates">Brake Rate</label>
+          <input type="radio" id="valid" name="likelihood" />
+          <label for="valid">Valid</label>
+          <input type="radio" id="total_risk" name="likelihood" />
+          <label for="total_risk">Total Risk</label>
         </fieldset>
       </form>
       <div id="info"></div>
+      <div id="three"></div>
     </div>
   </div>
 </body>
