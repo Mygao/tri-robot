@@ -8,6 +8,7 @@ local flags = racecar.parse_arg(arg)
 local desired_path = flags.desired or 'lane_outer'
 
 local control = require'control'
+local kdtree = require'kdtree'
 local has_logger, logger = pcall(require, 'logger')
 local vector = require'vector'
 local log_announce = racecar.log_announce
@@ -32,12 +33,12 @@ waypoints.lane_outer =  {
 waypoints.traj_left_turn = {
   {-2, 1.5},
   {-0.8, 1.5}, {-0.7705948579011315, 1.5014445819983409}, {-0.7414729033951611, 1.5057644158790309}, {-0.712914596823661, 1.5129178992803374}, {-0.6851949702904727, 1.5228361402466142}, {-0.6585809789522005, 1.5354236206954937}, {-0.6333289300941191, 1.5505591163092367}, {-0.6096820147509061, 1.5680968639911792}, {-0.5878679656440355, 1.587867965644036}, {-0.5680968639911788, 1.6096820147509066}, {-0.5505591163092364, 1.6333289300941196}, {-0.5354236206954934, 1.6585809789522008}, {-0.522836140246614, 1.6851949702904732}, {-0.5129178992803374, 1.7129145968236614}, {-0.5057644158790309, 1.7414729033951617}, {-0.5014445819983409, 1.770594857901132}, {-0.5, 1.8},
-  {-0.5, 3.75}
+  {-0.5, 3.5}
 }
 waypoints.traj_right_turn = {
   {-2, 1.5},
   {-1.5, 1.5}, {-1.5205948579011328, 1.4985554180016591}, {-1.4914729033951626, 1.4942355841209694}, {-1.4629145968236625, 1.4870821007196628}, {-1.4351949702904743, 1.4771638597533865}, {-1.408580978952202, 1.464576379304507}, {-1.3833289300941205, 1.4494408836907644}, {-1.3596820147509077, 1.4319031360088221}, {-1.3378679656440369, 1.4121320343559653}, {-1.31809686399118, 1.390317985249095}, {-1.3005591163092374, 1.3666710699058822}, {-1.2854236206954943, 1.341419021047801}, {-1.2728361402466148, 1.3148050297095288}, {-1.262917899280338, 1.2870854031763408}, {-1.2557644158790313, 1.2585270966048407}, {-1.251444581998341, 1.2294051420988705}, {-1.25, 1.2},
-  {-1.25, -1.75},
+  {-1.25, -1.5},
 }
 
 local lookahead = 0.5
@@ -77,7 +78,44 @@ local env = {
   trajectory_turn = {waypoints.traj_left_turn, waypoints.traj_right_turn},
 }
 
-local co_control = cocreate(control.pure_pursuit(my_path, lookahead))
+local threshold_close = tonumber(flags.threshold_close) or 0.5 -- meters
+
+-- Give the position, path id, distance to the point
+local function fn_nearby(id_last, p_lookahead)
+  if not p_lookahead then
+    local id_nearby = id_last + 1
+    return id_nearby, my_path[id_nearby]
+  end
+  local nearby = my_path.tree:nearest(p_lookahead, threshold_close)
+  -- NOTE: nearby should be sorted by increasing distance
+  if not nearby then
+    return false, "No points nearby the path"
+  end
+  if not id_last then
+    return nearby[1].user, math.sqrt(nearby[1].dist_sq)
+  end
+  local id_nearby, dist_nearby
+  for _, nby in ipairs(nearby) do
+    if nby.user >= id_last then
+      id_nearby = nby.user
+      dist_nearby = nby.dist_sq
+      break
+    end
+  end
+  if not id_nearby then
+    return false , "No unvisited points"
+  end
+  -- Don't skip too far in a single timestep
+  -- if id_nearby > id_last + 1 then
+  --   id_nearby = id_last + 1
+  -- end
+  return id_nearby, dist_nearby
+end
+
+local co_control = cocreate(control.pure_pursuit{
+                            path=my_path,
+                            fn_nearby=fn_nearby,
+                            lookahead=lookahead})
 
 -- Given car pose
 local function find_lane(p_vehicle)
@@ -109,6 +147,8 @@ end
 local my_id = 'tri1'
 local last_frame = -math.huge
 local function parse_vicon(msg)
+  -- TODO: Stale for each ID...
+  -- may be the latest for that vehicle
   if msg.frame < last_frame then
     return false, "Stale data"
   end
@@ -156,7 +196,12 @@ local function parse_vicon(msg)
   elseif result.done then
     -- Keep looping
     print("Restarting")
-    co_control = cocreate(control.pure_pursuit(my_path, lookahead))
+    co_control = cocreate(control.pure_pursuit{
+                          path=my_path,
+                          fn_nearby=fn_nearby,
+                          lookahead=lookahead,
+                          id_start=1
+                          })
     return
   end
 
@@ -183,6 +228,12 @@ local function parse_vicon(msg)
   log_announce(log, result, "control")
 end
 
-racecar.listen{
+local cb_tbl = {
   vicon = parse_vicon
 }
+
+racecar.listen{
+  channel_callbacks = cb_tbl,
+}
+
+print("Done control!")
