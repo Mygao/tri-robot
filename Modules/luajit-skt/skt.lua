@@ -192,6 +192,7 @@ if not C_has"poll" then
 end
 
 -- timeout is in milliseconds
+-- Returns an array of the revents for each fd
 function lib.poll(_fds, timeout)
   local nfds = #_fds
   local fds = ffi.new('struct pollfd[?]', nfds)
@@ -207,10 +208,10 @@ function lib.poll(_fds, timeout)
     return 0
   end
   local events = {}
-  --print('populate')
   for i=0, nfds-1 do
-    --events[_fds[i+1]] = (fds[i-1].revents ~= 0) and fds[i-1].revents
-    events[i+1] = (fds[i].revents ~= 0) and fds[i].revents
+    -- events[_fds[i+1]] = (fds[i-1].revents ~= 0) and fds[i-1].revents
+    local revents = fds[i].revents
+    events[i+1] = (revents ~= 0) and revents
   end
   return rc, events
 end
@@ -248,22 +249,20 @@ local function sendto(self, buffer, length)
 end
 
 local function send_all(self, msg)
-  if type(msg)=='table' then
-    local n = 0
-    for i, frag in ipairs(msg) do
-      -- local t0 = time()
-      local ret, err = self:send(frag)
-      -- local t1 = time()
-      -- print("skt", ret, n, t1-t0)
-      if ret then
-        n = n + ret
-      else
-        return false, string.format("Pkt %d: %s", i, err)
-      end
-    end
-    return n
+  if type(msg)~='table' then
+    return false, "Need a table of strings"
   end
-  return self:send(msg)
+  local n = 0
+  for i, frag in ipairs(msg) do
+    local ret, err = self:send(frag)
+    if ret then
+      n = n + ret
+    -- Silently ignore for now
+    -- else
+    --   return false, string.format("Pkt %d: %s", i, err)
+    end
+  end
+  return n
 end
 
 -- https://github.com/UPenn-RoboCup/UPennDev2/blob/master/Modules/udp/ffi.lua
@@ -352,6 +351,10 @@ local mt = {
 }
 
 function lib.open(parameters)
+
+  if type(parameters)~='table' then
+    return false, "Please provide parameters"
+  end
 
   local port = parameters.port
   if type(port)~='number' then
