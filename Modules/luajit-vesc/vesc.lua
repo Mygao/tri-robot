@@ -22,7 +22,7 @@ local function generate_crc16_lut()
   for idx=0, 255 do
     local crc = 0
     local c = lshift16(idx, 8)
-    for i=0, 7 do
+    for _=0, 7 do
       if band(bxor(c, crc), 0x8000) ~= 0 then
         crc = bxor(lshift16(crc), base)
       else
@@ -300,18 +300,13 @@ local VESC_CHECKSUM_HIGH = 5
 local VESC_CHECKSUM_LOW = 6
 local VESC_END = 7
 function lib.update(new_data)
-  local str = ''
+  local str = type(new_data)=='string' and new_data or ''
   local pkt_state = VESC_START
   local pkt_len = 0
   local pkt_crc = 0
   local pkt_payload = {}
   local pkt_done = false
   while true do
-    -- Add any new data
-    if type(new_data)=='string' then
-      str = str..new_data
-      new_data = false
-    end
     local cursor = 1
     while cursor <= #str do
       local byte = str:byte(cursor)
@@ -385,6 +380,10 @@ function lib.update(new_data)
       pkt_done = false
     else
       new_data = coyield(false, pkt_state)
+    end
+    -- Add any new data
+    if type(new_data)=='string' then
+      str = str..new_data
     end
   end -- while a string
 end
