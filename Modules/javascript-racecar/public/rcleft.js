@@ -136,8 +136,8 @@ document.addEventListener("DOMContentLoaded", function(event) {
       70, THREE_CANVAS_WIDTH / THREE_CANVAS_HEIGHT, 0.01, 20);
   camera.up.set(0, 0, 1);
   // Left turn sim
-  camera.position.set(X_SVG_SZ / 16, Y_SVG_MIN + 3 * Y_SVG_SZ / 4, 1);
-  camera.lookAt(0.5, 0, 0);
+  // camera.position.set(X_SVG_SZ / 16, Y_SVG_MIN + 3 * Y_SVG_SZ / 4, 1);
+  // camera.lookAt(0.5, 0, 0);
   // Roundabout turn sim
   // camera.position.set(X_SVG_MIN + X_SVG_SZ / 4, Y_SVG_MIN + 1.5 * Y_SVG_SZ /
   // 4,
@@ -149,9 +149,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
   //                     2);
   // camera.lookAt(0, -1, 0);
   // Left turn RC
-  // camera.position.set(X_SVG_MIN + 0 * X_SVG_SZ / 2,
-  //                     Y_SVG_MIN + 3 * Y_SVG_SZ / 4, 1.25);
-  // camera.lookAt(-1, 1.6, 0);
+  camera.position.set(X_SVG_MIN + 0 * X_SVG_SZ / 2,
+                      Y_SVG_MIN + 3 * Y_SVG_SZ / 4, 1.25);
+  camera.lookAt(-1, 1.6, 0);
 
   var light0 = new THREE.AmbientLight(0x404040); // soft white light
   scene.add(light0);
@@ -471,7 +471,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
       pla_el.setAttributeNS(null, 'cx', xla);
       pla_el.setAttributeNS(null, 'cy', yla);
       // Near
-      const p_near = msg.control.p_near;
+      const p_near = msg.control.p_nearby;
       var pn_el = document.getElementById('near');
       if (!pn_el) {
         pn_el =
