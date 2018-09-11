@@ -10,7 +10,11 @@ local tinsert = require'table'.insert
 local tremove = require'table'.remove
 local has_logger, logger = pcall(require, 'logger')
 local has_packet, packet = pcall(require, 'lcm_packet')
+local time_us = require'unix'.time_us
+local usleep = require'unix'.usleep
+-- Simple msgpack payload with no fragmentation
 local fragment = has_packet and packet.fragment or function(ch, str)
+  -- Truncate the channel name
   if #ch>255 then ch = ch:sub(1, 255) end
   return tconcat{
     schar(0x81), -- 1 element map
@@ -32,22 +36,34 @@ local lib = {
 -- Jitter information
 local jitter_counts, jitter_times = {}, {}
 
-local MCL_ADDRESS, MCL_PORT = "239.255.65.56", 6556
--- local MCL_ADDRESS, MCL_PORT = "239.255.76.67", 7667
--- local unix = require'unix'
--- local time = require'unix'.time
-local time_us = require'unix'.time_us
-local usleep = require'unix'.usleep
-local skt = require'skt'
-local skt_mcl, err = skt.open{
-  address = MCL_ADDRESS,
-  port = MCL_PORT,
-  -- ttl = 1
-}
-if not skt_mcl then
-  io.stderr:write(string.format("MCL not available: %s\n", err))
-end
+-- Message passing among processes
 local has_lcm, lcm = pcall(require, 'lcm')
+-- MCL: localhost with ttl of 0, LCM: subnet with ttl of 1
+local MCL_ADDRESS, MCL_PORT = "239.255.65.56", 6556
+local LCM_ADDRESS, LCM_PORT = "239.255.76.67", 7667
+local skt_mcl, skt_lcm
+if has_lcm then
+  local err
+  local skt = require'skt'
+  skt_mcl, err = skt.open{
+    address = MCL_ADDRESS,
+    port = MCL_PORT,
+  }
+  if not skt_mcl then
+    io.stderr:write(string.format("MCL not available: %s\n",
+                                  tostring(err)))
+  end
+
+  skt_lcm, err = skt.open{
+    address = LCM_ADDRESS,
+    port = LCM_PORT,
+    -- ttl = 1
+  }
+  if not skt_lcm then
+    io.stderr:write(string.format("LCM not available: %s\n",
+                                  tostring(err)))
+  end
+end
 
 local has_signal, signal = pcall(require, 'signal')
 local exit_handler = false
@@ -226,38 +242,51 @@ end
 --]]
 
 -- Rate: loop rate in milliseconds
-function lib.listen(cb_tbl, loop_rate, loop_fn)
+function lib.listen(options)
   assert(has_lcm, lcm)
-  assert(has_logger, logger)
-  local lcm_obj = assert(lcm.init(MCL_ADDRESS, MCL_PORT))
-  if type(cb_tbl)=='table' then
-    for ch, fn in pairs(cb_tbl) do
-      assert(lcm_obj:register(ch, fn, logger.decode))
+  local lcm_obj = assert(lcm.init{skt = skt_mcl})
+  if type(options)~='table' then options = {} end
+  -- Add LCM channels to poll
+  if type(options.channel_callbacks)=='table' then
+    assert(has_logger, logger)
+    for ch, cb in pairs(options.channel_callbacks) do
+      assert(lcm_obj:cb_register(ch, cb, logger.decode))
     end
   end
-  loop_rate = tonumber(loop_rate) or -1
-  loop_fn = type(loop_fn)=='function' and loop_fn
-  -- local t0, t1 = 0, 0
+  -- Add extra file descriptors to poll
+  if type(options.fd_updates)=='table' then
+    for fd, update in pairs(options.fd_updates) do
+      assert(lcm_obj:fd_register(fd, update))
+    end
+  end
+  local loop_rate = tonumber(options.loop_rate)
+  local loop_rate1 -- actual to keep steady timing
+  local loop_fn = type(options.loop_fn)=='function' and options.loop_fn
   local t_loop = 0
   local t_debug = 0
   local dt_debug = 1e6
+  local status = true
+  local err
   while lib.running do
-    -- t0 = time_us()
-    local loop_rate1 = max(0, loop_rate + tonumber(t_loop - time_us())/1e3)
-    local status = lcm_obj:update(loop_rate1)
-    if not status then
-      lib.running = false
+    if loop_rate then
+      local t_offset = tonumber(t_loop - time_us())/1e3
+      loop_rate1 = max(0, loop_rate + t_offset)
+    else
+      loop_rate1 = -1
     end
+    status, err = lcm_obj:update(loop_rate1)
+    if not status then lib.running = false end
     t_loop = time_us()
     if loop_rate then
-      if loop_fn then loop_fn() end
       update_jitter("lcm_loop", t_loop)
+      if loop_fn then loop_fn() end
     end
     if tonumber(t_loop - t_debug) > dt_debug then
       io.write(tconcat(jitter_tbl(), '\n'), '\n')
       t_debug = time_us()
     end
   end
+  return status, err
 end
 
 function lib.play(fnames, realtime, update, cb)

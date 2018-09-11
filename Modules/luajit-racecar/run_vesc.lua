@@ -50,12 +50,11 @@ end
 
 -- TODO: Put into VESC library
 local coro_vesc = coroutine.create(vesc.update)
-local pkt_req_values = schar(unpack(vesc.sensors()))
-local function cb_loop()
-  if not fd_vesc then
-    return false, "No file descriptor"
-  end
-  -- Read to find data
+
+-- Read to find data
+local function update_read(e)
+  -- TODO: Check the type of event:
+  -- e.g. in case the device was unplugged
   local data = read(fd_vesc)
   -- TODO: Check this...
   if data==-1 then
@@ -67,6 +66,14 @@ local function cb_loop()
       status, obj, msg = coresume(coro_vesc)
     end
   end
+end
+
+local pkt_req_values = schar(unpack(vesc.sensors()))
+local function cb_loop()
+  if not fd_vesc then
+    return false, "No file descriptor"
+  end
+  update_read()
   -- Write commands
   local pkt_servo = vesc.servo_position(cmds.servo)
   if pkt_servo then
@@ -81,9 +88,16 @@ local function cb_loop()
   -- Save the commands in the log file
   log_announce(log, cmds, 'vesc')
   -- Ask for sensors again
-  --write(fd_vesc, pkt_req_values)
+  -- write(fd_vesc, pkt_req_values)
   -- stty.drain(fd_vesc)
 end
 
 -- Listen at 100Hz
-racecar.listen({control=cb_control}, 10, cb_loop)
+local cb_tbl = {
+  control = cb_control
+}
+racecar.listen{
+  channel_callbacks = cb_tbl,
+  loop_rate = 10,
+  loop_fn = cb_loop
+}
