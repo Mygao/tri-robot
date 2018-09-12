@@ -23,6 +23,8 @@ local fragment = has_packet and packet.fragment or function(ch, str)
   }
 end
 
+local HOSTNAME = io.popen"hostname":read"*line"
+
 local nan = 0/0
 local RAD_TO_DEG = 180/math.pi
 local DEG_TO_RAD = math.pi/180
@@ -30,7 +32,8 @@ local DEG_TO_RAD = math.pi/180
 local lib = {
   nan = nan,
   RAD_TO_DEG = RAD_TO_DEG,
-  DEG_TO_RAD = DEG_TO_RAD
+  DEG_TO_RAD = DEG_TO_RAD,
+  HOSTNAME = HOSTNAME
 }
 
 -- Jitter information

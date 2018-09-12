@@ -58,13 +58,14 @@ local function update_read(e)
   local data = read(fd_vesc)
   -- TODO: Check this...
   if data==-1 then
-    print("VESC | Bad read")
-  elseif type(data)=='string' then
-    local status, obj, msg = coresume(coro_vesc, data)
-    while status and obj do
-      log_announce(log, obj, 'vesc')
-      status, obj, msg = coresume(coro_vesc)
-    end
+    return false, "Bad read"
+  elseif type(data)~='string' then
+    return false, "Weird read: "..type(data)
+  end
+  local status, obj, msg = coresume(coro_vesc, data)
+  while status and obj do
+    log_announce(log, obj, 'vesc')
+    status, obj, msg = coresume(coro_vesc)
   end
 end
 
