@@ -120,10 +120,10 @@ local co_control = cocreate(control.pure_pursuit{
 
 -- Given car pose
 local function find_lane(p_vehicle)
-  local kmin, dmin, imin = false, math.huge, nil
+  local kmin, dmin, imin = false, math.huge, false
   for k, path in pairs(paths) do
     if k:match"^lane" then
-      local nearest, err = path.tree:nearest({unpack(p_vehicle, 1, 2)}, 1)
+      local nearest, err = path.tree:nearest({unpack(p_vehicle, 1, 2)}, 0.5)
       nearest = nearest and nearest[1]
       -- TODO: Check dot product direction
       if nearest then
@@ -173,14 +173,18 @@ local function parse_vicon(msg)
   --print("My Lane", my_lane.name_path, my_lane.id_path, my_lane.dist_sq)
   lanes[my_id] = nil
 
-  local lead_offset = math.huge
+  local lead_offset, lead_vehicle = math.huge, nil
   for id, lane in pairs(lanes) do
     if lane.name_path==my_lane.name_path then
+      --print(lane.id_path, my_lane.id_path, lane.name_path, my_lane.name_path)
       -- TODO: Check the relative pose between us and that ID
       local path_offset = (lane.id_path - my_lane.id_path) * ds
       --print(id, "in my lane", lane.id_path, "distance", path_offset)
       if path_offset > 0 then
-        lead_offset = math.min(lead_offset, path_offset)
+        if path_offset < lead_offset then
+          lead_vehicle = id
+          lead_offset = path_offset
+        end
       end
 --    else
 --      print(id, "not in my lane", lane.name_path)
@@ -222,7 +226,7 @@ local function parse_vicon(msg)
   -- print("Steering angle", steering * racecar.RAD_TO_DEG)
 
   if lead_offset < 0.9 then
-    print("Stop to not hit!!")
+    print("Stop to not hit!!", lead_vehicle)
   end
   env.observer = pose_rbt
   -- For GUI plotting
