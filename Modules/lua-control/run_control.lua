@@ -218,8 +218,8 @@ local function parse_vicon(msg)
   end
 
   local steering = math.atan(result.kappa * wheel_base)
-  print("Path", result.id_path, my_path[result.id_path])
-  print("Steering angle", steering * racecar.RAD_TO_DEG)
+  -- print("Path", result.id_path, my_path[result.id_path])
+  -- print("Steering angle", steering * racecar.RAD_TO_DEG)
 
   if lead_offset < 0.9 then
     print("Stop to not hit!!")

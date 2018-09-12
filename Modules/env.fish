@@ -2,7 +2,7 @@
 set -x RACECAR_HOME (realpath (dirname (status -f)))
 set -x LUA_PATH "$RACECAR_HOME/luajit-?/?.lua;$RACECAR_HOME/lua-?/?.lua;;"
 set -x LUA_CPATH "$RACECAR_HOME/lua-?/?.so;;"
-set -x LCM_DEFAULT_URL "udpm://239.255.65.56:6556?ttl=1"
+set -x LCM_DEFAULT_URL "udpm://239.255.65.56:6556?ttl=0"
 
 # Set to 2^23 bytes
 set MAXSOCKBUF_LCM 8388608
