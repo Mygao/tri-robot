@@ -228,9 +228,7 @@ local function parse_vicon(msg)
   if lead_offset < 0.9 then
     print("Stop to not hit!!", lead_vehicle)
   end
-  env.observer = pose_rbt
-  -- For GUI plotting
-  log_announce(log, env, "risk")
+
   -- For sending to the vesc
   result.steering = steering
   result.velocity = 6 -- duty cycle
@@ -242,10 +240,18 @@ local function parse_vicon(msg)
   end
 
   log_announce(log, result, "control")
+  -- For GUI plotting
+  -- env.observer = pose_rbt
+  -- log_announce(log, env, "risk")
+end
+
+local function parse_risk(msg)
+  print(msg.go)
 end
 
 local cb_tbl = {
-  vicon = parse_vicon
+  vicon = parse_vicon,
+  risk = parse_risk
 }
 
 racecar.listen{
