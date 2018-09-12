@@ -23,7 +23,7 @@ const eps = 1e-4;
 const to_rainbow =
     (v, a) => { return 'hsla(' + floor(360 * v) + ', 100%, 50%, ' + a + ')'; };
 
-const n_timesteps = 100;
+const n_timesteps = 75; // 100;
 var risk_over_time = [], risk_times = [];
 
 document.addEventListener("DOMContentLoaded", function(event) {
@@ -31,11 +31,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
   const d3colors = Plotly.d3.scale.category10();
 
   var likelihood_selection = 'beliefs';
-  // const beliefs = msg.beliefs;
-  // const beliefs = msg.valid;
-  // const beliefs = msg.attendant_risk;
-  // const beliefs = msg.unseen_risk;
-  // const beliefs = msg.total_risk;
 
   // Identifying the SVG size
   const environment_svg = document.getElementById('environment');
@@ -377,7 +372,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
       risk_boxes.pop();
     }
     // Iterate through the lanes
-    msg.total_risk.forEach((lr, il) => {
+    msg.conditioned_risk.forEach((lr, il) => {
       let lrisk_boxes = risk_boxes[il];
       while (lr.length > lrisk_boxes.length) {
         let rm = risk_mesh.clone();
@@ -439,6 +434,120 @@ document.addEventListener("DOMContentLoaded", function(event) {
     }
   };
 
+  const update_plot = (msg) => {
+    const time = msg.t, risks = msg.risks;
+    if (time === undefined || risks === undefined) {
+      return;
+      }
+
+    if (time < risk_times[risk_times.length - 1]) {
+      risk_times = [];
+      risk_over_time = [];
+      }
+    else if (risk_times.length >= n_timesteps) {
+      risk_times.shift();
+      risk_over_time.forEach((r) => { r.shift(); });
+    }
+
+    // Add the time indicator
+    risk_times.push(time);
+    n_risk_times = risk_times.length;
+
+    var data;
+    if (msg.risk_checks) {
+      // console.log(msg.tclear_checks, msg.risk_checks);
+      // msg.risk_checks.map((r) => 1 / (1 - Math.log(r))).forEach((risks, i) =>
+      // {
+      msg.risk_checks.forEach((risks, i) => {
+        var r = risks[risks.length - 1];
+        // r = Math.log(r);
+        // r = 1 / (1 - Math.log(r));
+        if (i >= risk_over_time.length) {
+          risk_over_time[i] = [ r ];
+        } else {
+          risk_over_time[i].push(r);
+        }
+      });
+
+      const tclear_checks = msg.tclear_checks;
+      const n_tclear = tclear_checks.length;
+      data = risk_over_time.map((r, i) => {
+        const tc = tclear_checks[i];
+        const my_tclear = r.map(() => tc);
+        // console.log(risk_times, r, my_tclear);
+        return {
+          z : r,
+          x : risk_times,
+          y : my_tclear,
+          type : 'scatter3d',
+          mode : 'lines',
+          // type : 'surface',
+          name : 't_clear=' + tc.toFixed(2),
+        };
+      });
+
+      // data.push({z : [ [ 0.1, 0.1 ], [ 0.1, 0.1 ] ], type : 'surface'});
+      data.push({
+        showscale : false,
+        z : [ [ 0.1, 0.1 ], [ 0.1, 0.1 ] ],
+        x : [
+          [ risk_times[0], risk_times[0] ],
+          [ risk_times[n_risk_times - 1], risk_times[n_risk_times - 1] ]
+        ],
+        y : [
+          [ tclear_checks[0], tclear_checks[n_tclear - 1] ],
+          [ tclear_checks[0], tclear_checks[n_tclear - 1] ]
+        ],
+        type : 'surface',
+        opacity : 0.5,
+        color : 'rgb(23, 190, 207)', //'#FFB6C1'
+      });
+    } else {
+      // risk.map((b) => 1 / (1 - Math.log(b))).forEach((r, i) => {
+      risks.forEach((r, i) => {
+        if (i >= risk_over_time.length) {
+          risk_over_time[i] = [ r ];
+        } else {
+          risk_over_time[i].push(r);
+        }
+      });
+
+      data = risk_over_time.map((r, i) => {
+        return {
+          x : risk_times,
+          y : r,
+          mode : 'lines',
+          name : 'lane' + i,
+          line : {color : d3colors(i)}
+        };
+      });
+      data[data.length - 1].name = 'total';
+      data[data.length - 1].line.color = d3colors(9);
+      }
+
+    var layout = {
+      title : 'Intersection Risk to Go',
+      showlegend : false,
+      // xaxis : {title : 'time', showgrid : false, zeroline : false},
+      // yaxis : {
+      //   title : 'Conditioned Risk',
+      //   showline : false,
+      //   // range : [ 0, 1 ]
+      // },
+      camera : {eye : {x : -1.25, y : -1.25, z : 0.125}},
+      scene : {
+        xaxis : {title : 'time (s)'},
+        yaxis : {title : 't_clear (s)'},
+        zaxis : {title : 'Risk'}
+      },
+      width : 1024,
+      height : 720,
+      datarevision : time
+    };
+    Plotly.react(graph_div, data, layout);
+
+  };
+
   ws.onmessage = (e) => {
     // console.log(e.data);
     var msg = munpack(new Uint8Array(e.data));
@@ -452,6 +561,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
     update_obstacles(msg);
     update_vehicles(msg);
     update_observer(msg);
+    update_plot(msg);
 
     if (msg.control !== undefined) {
       // Lookahead
@@ -540,52 +650,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
           [ time.toFixed(2), msg.go ? "Go" : "No Go" ].join('<br/>');
       }
     const risks = msg.risks;
-    if (time !== undefined && risks !== undefined) {
-      // info_div.innerHTML = risk.toFixed(2);
-      if (time < risk_times[risk_times.length - 1]) {
-        risk_times = [];
-        risk_over_time = [];
-        }
-      else if (risk_times.length >= n_timesteps) {
-        risk_times.shift();
-        risk_over_time.forEach((r) => { r.shift(); });
-      }
-
-      risk_times.push(time);
-      // risk.map((b) => 1 / (1 - Math.log(b))).forEach((r, i) => {
-      risks.forEach((r, i) => {
-        // risk.forEach((r, i) => {
-        if (i >= risk_over_time.length) {
-          risk_over_time[i] = [ r ];
-        } else {
-          risk_over_time[i].push(r);
-        }
-      });
-
-      var data = risk_over_time.map((r, i) => {
-        return {
-          x : risk_times,
-          y : r,
-          mode : 'lines',
-          name : 'lane' + i,
-          line : {color : d3colors(i)}
-        };
-      });
-      data[data.length - 1].name = 'total';
-      data[data.length - 1].line.color = d3colors(9);
-
-      var layout = {
-        title : 'Intersection Risk to Go',
-        xaxis : {title : 'time', showgrid : false, zeroline : false},
-        yaxis : {
-          title : 'risk per meter',
-          showline : false,
-          // range : [ 0, 1 ]
-        },
-        datarevision : time
-      };
-      Plotly.react(graph_div, data, layout);
-      }
 
     if ('viewBox' in msg) {
       const changed = msg.viewBox.reduce(
