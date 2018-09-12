@@ -107,6 +107,7 @@ local function update_jitter(channel, t_us)
 end
 
 local function announce(channel, str, cnt, t_us)
+
   if not (skt_mcl and channel) then
     return false, "No channel/socket"
   elseif type(str)=='table' then
@@ -118,6 +119,7 @@ local function announce(channel, str, cnt, t_us)
   cnt = tonumber(cnt) or 0
   local msg = fragment(channel, str, cnt)
   local ret, err = skt_mcl:send_all(msg)
+  if not ret then return false, err end
   update_jitter(channel, t_us)
   return #str
 end
@@ -253,6 +255,7 @@ function lib.listen(options)
   if type(options.channel_callbacks)=='table' then
     assert(has_logger, logger)
     for ch, cb in pairs(options.channel_callbacks) do
+      print("Listening for", ch)
       assert(lcm_obj:cb_register(ch, cb, logger.decode))
     end
   end
@@ -265,14 +268,16 @@ function lib.listen(options)
   local loop_rate = tonumber(options.loop_rate)
   local loop_rate1 -- actual to keep steady timing
   local loop_fn = type(options.loop_fn)=='function' and options.loop_fn
+  local t_fn = 0
   local t_loop = 0
   local t_debug = 0
   local dt_debug = 1e6
   local status = true
   local err
   while lib.running do
+    local t = time_us()
     if loop_rate then
-      local t_offset = tonumber(t_loop - time_us())/1e3
+      local t_offset = tonumber(t_loop - t)/1e3
       loop_rate1 = max(0, loop_rate + t_offset)
     else
       loop_rate1 = -1
@@ -280,10 +285,8 @@ function lib.listen(options)
     status, err = lcm_obj:update(loop_rate1)
     if not status then lib.running = false end
     t_loop = time_us()
-    if loop_rate then
-      update_jitter("lcm_loop", t_loop)
-      if loop_fn then loop_fn() end
-    end
+    update_jitter("lcm_loop", t_loop)
+    if loop_fn and tonumber(t_loop - t_fn) >= loop_rate then loop_fn(t_loop); t_fn = t_loop end
     if tonumber(t_loop - t_debug) > dt_debug then
       io.write(tconcat(jitter_tbl(), '\n'), '\n')
       t_debug = time_us()

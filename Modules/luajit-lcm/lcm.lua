@@ -39,7 +39,7 @@ end
 --]]
 
 local function lcm_receive(self)
-  local str, address, port = self.skt_lcm:recv()
+  local str, address, port = self.skt:recv()
   if not str then
     -- Should always receive data
     return false, "No data"
@@ -58,11 +58,12 @@ end
 local function lcm_send(self, channel, msg)
   local enc = msg:encode()
   local frag = packet.fragment(channel, enc)
-  return self.skt_lcm:send_all(frag)
+  return self.skt:send_all(frag)
 end
 
 -- TODO: Add other file descriptors to listen for
 local function lcm_update(self, timeout)
+--print("Listening on", unpack(self.fds))
   local ret, events = skt.poll(self.fds, timeout)
   if ret == 0 then
     -- timeout reached
@@ -72,6 +73,7 @@ local function lcm_update(self, timeout)
     return false, events
   end
   for i, e in ipairs(events) do
+    --print("Update", i, e)
     if e then self.fd_updates[i](e) end
   end
   return ret
@@ -112,7 +114,7 @@ function lib.init(options)
     update = lcm_update,
   }
   -- File descriptors and their on-data updates
-  obj.fds = {skt_lcm.fd}
+  obj.fds = {obj.skt.fd}
   obj.fd_updates = {function() lcm_receive(obj) end}
   obj.fd_register = fd_register
   return obj

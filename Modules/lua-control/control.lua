@@ -46,7 +46,7 @@ local function pure_pursuit(params)
       -- Wait until we are close
       if not id_nearby then
         id_last = nil
-        result = {far = true, err=dist}
+        result = {err= dist}
       elseif id_nearby >= n_path and d_goal <= lookahead then
         result = {done = true}
       else

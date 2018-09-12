@@ -149,9 +149,12 @@ local last_frame = -math.huge
 local function parse_vicon(msg)
   -- TODO: Stale for each ID...
   -- may be the latest for that vehicle
-  if msg.frame < last_frame then
+  local frame = msg.frame
+  print("Frame", frame)
+  if frame < last_frame then
     return false, "Stale data"
   end
+  last_frame = frame
   local poses, lanes = {}, {}
   for id, vp in pairs(msg) do
     if id~='frame' then
@@ -191,6 +194,10 @@ local function parse_vicon(msg)
     return os.exit()
   elseif type(result)~='table' then
     print("Improper", result, err)
+    log_announce(log, { steering = 0, velocity = 0 }, "control")
+    return
+  elseif result.err then
+    print("Error", result.err)
     log_announce(log, { steering = 0, velocity = 0 }, "control")
     return
   elseif result.done then

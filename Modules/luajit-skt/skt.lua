@@ -249,7 +249,9 @@ local function sendto(self, buffer, length)
 end
 
 local function send_all(self, msg)
-  if type(msg)~='table' then
+  if type(msg)=='string' then
+    return self:send(msg)
+  elseif type(msg)~='table' then
     return false, "Need a table of strings"
   end
   local n = 0
