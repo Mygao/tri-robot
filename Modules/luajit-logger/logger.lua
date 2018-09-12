@@ -301,7 +301,7 @@ function lib.new(name, log_dir, datestamp)
   log_dir = type(log_dir)=='string' and log_dir or './logs'
   local status = os.execute("mkdir -p "..log_dir)
   if not status or status==0 then
-    return false, "Cannot make directory"
+    return false, string.format("Cannot make directory %s", log_dir)
   end
   -- Log new data
   if type(datestamp)~='string' or datestamp:find(iso8601_find)~=1 then

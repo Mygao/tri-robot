@@ -6,6 +6,7 @@ local unpack = unpack or require'table'.unpack
 local racecar = require'racecar'
 local flags = racecar.parse_arg(arg)
 local desired_path = flags.desired or 'lane_outer'
+local my_id = assert(racecar.HOSTNAME)
 
 local control = require'control'
 local kdtree = require'kdtree'
@@ -125,15 +126,15 @@ local function find_lane(p_vehicle)
       local nearest, err = path.tree:nearest({unpack(p_vehicle, 1, 2)}, 1)
       nearest = nearest and nearest[1]
       -- TODO: Check dot product direction
-      if not nearest then
-        print("Not near!", err, path.tree:size(), k, p_vehicle)
-      else
-        print("Near", k, nearest.dist_sq)
+      if nearest then
+        --print("Near", k, nearest.dist_sq)
         if nearest.dist_sq < dmin then
           imin = nearest.user
           dmin = nearest.dist_sq
           kmin = k
         end
+      --else
+        --print("Not near!", err, path.tree:size(), k, p_vehicle)
       end
     end
   end
@@ -144,13 +145,12 @@ local function vicon2pose(vp)
   return vp.translation[1] / 1e3, vp.translation[2] / 1e3, vp.rotation[3]
 end
 
-local my_id = 'tri1'
 local last_frame = -math.huge
 local function parse_vicon(msg)
   -- TODO: Stale for each ID...
   -- may be the latest for that vehicle
   local frame = msg.frame
-  print("Frame", frame)
+  --print("Frame", frame)
   if frame < last_frame then
     return false, "Stale data"
   end
@@ -160,17 +160,17 @@ local function parse_vicon(msg)
     if id~='frame' then
       local p = vector.pose{vicon2pose(vp)}
       poses[id] = p
-      print("Find", id)
+      --print("Find", id)
       lanes[id] = find_lane(p)
     end
   end
   -- Update the robot pose
   local pose_rbt = poses[my_id]
-  print("Pose", pose_rbt)
+  --print("Pose", pose_rbt)
   if not pose_rbt then return end
   -- Check if a car is in my lane :)
   local my_lane = lanes[my_id]
-  print("My Lane", my_lane.name_path, my_lane.id_path, my_lane.dist_sq)
+  --print("My Lane", my_lane.name_path, my_lane.id_path, my_lane.dist_sq)
   lanes[my_id] = nil
 
   local lead_offset = math.huge
@@ -178,12 +178,12 @@ local function parse_vicon(msg)
     if lane.name_path==my_lane.name_path then
       -- TODO: Check the relative pose between us and that ID
       local path_offset = (lane.id_path - my_lane.id_path) * ds
-      print(id, "in my lane", lane.id_path, "distance", path_offset)
+      --print(id, "in my lane", lane.id_path, "distance", path_offset)
       if path_offset > 0 then
         lead_offset = math.min(lead_offset, path_offset)
       end
-    else
-      print(id, "not in my lane", lane.name_path)
+--    else
+--      print(id, "not in my lane", lane.name_path)
     end
   end
 
@@ -201,8 +201,13 @@ local function parse_vicon(msg)
     log_announce(log, { steering = 0, velocity = 0 }, "control")
     return
   elseif result.done then
+    if desired_path:find"left" then
+      desired_path = 'lane_inner'
+    elseif desired_path:find"right" then
+      desired_path = 'lane_outer'
+    end
+    my_path = assert(paths[desired_path])
     -- Keep looping
-    print("Restarting")
     co_control = cocreate(control.pure_pursuit{
                           path=my_path,
                           fn_nearby=fn_nearby,
@@ -224,7 +229,7 @@ local function parse_vicon(msg)
   log_announce(log, env, "risk")
   -- For sending to the vesc
   result.steering = steering
-  result.velocity = 8 -- duty cycle
+  result.velocity = 6 -- duty cycle
 
   if lead_offset < 0.8 then
     result.velocity = 0
