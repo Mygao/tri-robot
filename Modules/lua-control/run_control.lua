@@ -17,7 +17,7 @@ local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
             and assert(logger.new('control', racecar.HOME.."/logs"))
 
-local lookahead = 0.5
+local lookahead = 0.6
 local wheel_base = 0.3
 local ok_to_go = false
 
@@ -64,7 +64,12 @@ for k, wps in pairs(waypoints) do
 end
 
 ----------------------
-local my_path = assert(paths[desired_path], "No desired path found: "..tostring(desired_path))
+local my_path
+if desired_path:find'turn' and paths[desired_path] then
+  my_path = paths.lane_enter
+else
+  my_path = assert(paths[desired_path], "No desired path found: "..tostring(desired_path))
+end
 -- local env = {
 --   viewBox = {-3, -5.5, 7, 9},
 --   observer = vector.pose(),
@@ -74,7 +79,8 @@ local my_path = assert(paths[desired_path], "No desired path found: "..tostring(
 --   trajectory_turn = {waypoints.traj_left_turn, waypoints.traj_right_turn},
 -- }
 
-local threshold_close = tonumber(flags.threshold_close) or 0.5 -- meters
+-- meters
+local threshold_close = tonumber(flags.threshold_close) or 1
 
 -- Give the position, path id, distance to the point
 local function fn_nearby(id_last, p_lookahead)
@@ -118,7 +124,7 @@ local function find_lane(p_vehicle)
   local kmin, dmin, imin = false, math.huge, false
   for k, path in pairs(paths) do
     if k:match"^lane" then
-      local nearest, err = path.tree:nearest({unpack(p_vehicle, 1, 2)}, 0.5)
+      local nearest, err = path.tree:nearest({unpack(p_vehicle, 1, 2)}, 1)
       nearest = nearest and nearest[1]
       -- TODO: Check dot product direction
       if nearest then
@@ -204,7 +210,7 @@ local function parse_vicon(msg)
     elseif desired_path:find"right" then
       desired_path = 'lane_outer'
     end
-    my_path = assert(paths[desired_path])
+    my_path = paths[desired_path]
     -- Keep looping
     co_control = cocreate(control.pure_pursuit{
                           path=my_path,
