@@ -1,5 +1,6 @@
 #!/usr/bin/env luajit
-local IS_MAIN = arg[-1]=='luajit' and arg[0]:find'racecar.lua' and ... ~= 'racecar'
+local IS_MAIN = arg[-1]=='luajit' and arg[0]:match"[^/]?racecar.lua$"=='racecar.lua' and ... ~= 'racecar'
+-- print('IS_MAIN', IS_MAIN, arg[0])
 
 local coresume = require'coroutine'.resume
 local costatus = require'coroutine'.status
@@ -29,13 +30,14 @@ end
 local HOSTNAME = io.popen"hostname":read"*line"
 
 local nan = 0/0
-local RAD_TO_DEG = 180/math.pi
-local DEG_TO_RAD = math.pi/180
+local DEG_PER_RAD = 180/math.pi
+local RAD_PER_DEG = math.pi/180
 local RACECAR_HOME = os.getenv"RACECAR_HOME" or '.'
 local lib = {
   nan = nan,
-  RAD_TO_DEG = RAD_TO_DEG,
-  DEG_TO_RAD = DEG_TO_RAD,
+  RAD_TO_DEG = DEG_PER_RAD,
+  DEG_TO_RAD = RAD_PER_DEG,
+  RPM_PER_MPS = 5220,
   HOSTNAME = HOSTNAME,
   HOME = RACECAR_HOME
 }
@@ -47,8 +49,9 @@ local jitter_counts, jitter_times = {}, {}
 local has_lcm, lcm = pcall(require, 'lcm')
 -- MCL: localhost with ttl of 0, LCM: subnet with ttl of 1
 local MCL_ADDRESS, MCL_PORT = "239.255.65.56", 6556
-local LCM_ADDRESS, LCM_PORT = "239.255.76.67", 7667
-local skt_mcl, skt_lcm
+-- local LCM_ADDRESS, LCM_PORT = "239.255.76.67", 7667
+local skt_mcl
+-- local skt_lcm
 if has_lcm then
   local err
   local skt = require'skt'
@@ -61,7 +64,7 @@ if has_lcm then
     io.stderr:write(string.format("MCL not available: %s\n",
                                   tostring(err)))
   end
-
+--[[
   skt_lcm, err = skt.open{
     address = LCM_ADDRESS,
     port = LCM_PORT,
@@ -71,6 +74,7 @@ if has_lcm then
     io.stderr:write(string.format("LCM not available: %s\n",
                                   tostring(err)))
   end
+--]]
 end
 
 local has_signal, signal = pcall(require, 'signal')

@@ -8,6 +8,27 @@ local tinsert = require'table'.insert
 local unpack = unpack or require'table'.unpack
 local dist = require'vector'.distance
 local tf2D = require'transform'.tf2D
+local vector = require'vector'
+
+local function gen_path(waypoints, ds)
+  ds = tonumber(ds) or 0.05
+  -- Two dimensional points
+  local path = {}
+  for i=1, #waypoints-1 do
+    local p_a = vector.new(waypoints[i])
+    local p_b = vector.new(waypoints[i+1])
+    local dp = p_b - p_a
+    local d = vector.norm(dp)
+    dp = vector.unit(dp)
+    tinsert(path, p_a)
+    for step = ds, d-ds, ds do
+      local p = p_a + step * dp
+      tinsert(path, p)
+    end
+  end
+  return path
+end
+lib.gen_path = gen_path
 
 -- Usage: c
 -- L is lookahead distance

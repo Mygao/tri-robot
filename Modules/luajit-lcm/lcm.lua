@@ -48,7 +48,7 @@ local function lcm_receive(self)
   local channel, data = packet.assemble(str, #str, id)
   -- Run the callback
   local fn = self.callbacks[channel]
-  if fn then
+  if fn and type(data)=='string' then
     local decode = self.decoders[channel]
     local msg = decode and decode(data) or data
     fn(msg)

@@ -17,7 +17,10 @@ local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
             and assert(logger.new('control', racecar.HOME.."/logs"))
 
+local lookahead = 0.5
+local wheel_base = 0.3
 local ok_to_go = false
+
 local cofsm = require'cofsm'
 local fsm_control = cofsm.new{
   {'botStop', 'go', 'botGo'},
@@ -40,37 +43,20 @@ waypoints.lane_outer =  {
   {-0.75, -2}, {1.6, -2},
   {2.1, -1.5}, {2.1, 1}
 }
+waypoints.lane_enter = {
+  {-2.5, 1.5}, {-1.5, 1.5}
+}
 waypoints.turn_left = {
-  {-2, 1.5},
   {-0.8, 1.5}, {-0.7705948579011315, 1.5014445819983409}, {-0.7414729033951611, 1.5057644158790309}, {-0.712914596823661, 1.5129178992803374}, {-0.6851949702904727, 1.5228361402466142}, {-0.6585809789522005, 1.5354236206954937}, {-0.6333289300941191, 1.5505591163092367}, {-0.6096820147509061, 1.5680968639911792}, {-0.5878679656440355, 1.587867965644036}, {-0.5680968639911788, 1.6096820147509066}, {-0.5505591163092364, 1.6333289300941196}, {-0.5354236206954934, 1.6585809789522008}, {-0.522836140246614, 1.6851949702904732}, {-0.5129178992803374, 1.7129145968236614}, {-0.5057644158790309, 1.7414729033951617}, {-0.5014445819983409, 1.770594857901132}, {-0.5, 1.8},
-  {-0.5, 2.0}
 }
 waypoints.turn_right = {
-  {-2, 1.5},
   {-1.5, 1.5}, {-1.5205948579011328, 1.4985554180016591}, {-1.4914729033951626, 1.4942355841209694}, {-1.4629145968236625, 1.4870821007196628}, {-1.4351949702904743, 1.4771638597533865}, {-1.408580978952202, 1.464576379304507}, {-1.3833289300941205, 1.4494408836907644}, {-1.3596820147509077, 1.4319031360088221}, {-1.3378679656440369, 1.4121320343559653}, {-1.31809686399118, 1.390317985249095}, {-1.3005591163092374, 1.3666710699058822}, {-1.2854236206954943, 1.341419021047801}, {-1.2728361402466148, 1.3148050297095288}, {-1.262917899280338, 1.2870854031763408}, {-1.2557644158790313, 1.2585270966048407}, {-1.251444581998341, 1.2294051420988705}, {-1.25, 1.2},
-  {-1.25, 1.0},
 }
 
-local lookahead = 0.5
-local wheel_base = 0.3
-
-local ds = 0.05
 local paths = {}
+local ds = 0.05
 for k, wps in pairs(waypoints) do
-  -- Two dimensional points
-  local path = {}
-  for i=1, #wps-1 do
-    local p_a = vector.new(wps[i])
-    local p_b = vector.new(wps[i+1])
-    local dp = p_b - p_a
-    local d = vector.norm(dp)
-    dp = vector.unit(dp)
-    table.insert(path, p_a)
-    for step = ds, d-ds, ds do
-      local p = p_a + step * dp
-      table.insert(path, p)
-    end
-  end
+  local path = control.gen_path(wps, ds)
   local tree = kdtree.create(2)
   for i, p in ipairs(path) do tree:insert(p, i) end
   paths[k] = path
@@ -79,14 +65,14 @@ end
 
 ----------------------
 local my_path = assert(paths[desired_path], "No desired path found: "..tostring(desired_path))
-local env = {
-  viewBox = {-3, -5.5, 7, 9},
-  observer = vector.pose(),
-  time_interval = 0.1,
-  speed = 0.1,
-  lanes = {waypoints.lane_inner, waypoints.lane_outer},
-  trajectory_turn = {waypoints.traj_left_turn, waypoints.traj_right_turn},
-}
+-- local env = {
+--   viewBox = {-3, -5.5, 7, 9},
+--   observer = vector.pose(),
+--   time_interval = 0.1,
+--   speed = 0.1,
+--   lanes = {waypoints.lane_inner, waypoints.lane_outer},
+--   trajectory_turn = {waypoints.traj_left_turn, waypoints.traj_right_turn},
+-- }
 
 local threshold_close = tonumber(flags.threshold_close) or 0.5 -- meters
 
@@ -168,7 +154,6 @@ local function parse_vicon(msg)
     if id~='frame' then
       local p = vector.pose{vicon2pose(vp)}
       poses[id] = p
-      --print("Find", id)
       lanes[id] = find_lane(p)
     end
   end
@@ -231,8 +216,6 @@ local function parse_vicon(msg)
   end
 
   local steering = math.atan(result.kappa * wheel_base)
-  -- print("Path", result.id_path, my_path[result.id_path])
-  -- print("Steering angle", steering * racecar.RAD_TO_DEG)
 
   -- For sending to the vesc
   result.steering = steering

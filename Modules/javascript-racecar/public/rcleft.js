@@ -565,7 +565,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         yaxis : {title : 't_clear (s)'},
         zaxis : {title : 'Risk'}
       },
-      width : 1024,
+      width : 720,
       height : 720,
       datarevision : time
     };
