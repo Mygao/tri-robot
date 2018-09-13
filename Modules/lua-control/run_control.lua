@@ -20,6 +20,7 @@ local log = has_logger and flags.log~=0
 local lookahead = 0.6
 local wheel_base = 0.3
 local ok_to_go = true
+local ignore_risk = false
 
 local cofsm = require'cofsm'
 local fsm_control = cofsm.new{
@@ -206,8 +207,10 @@ local function parse_vicon(msg)
     return
   elseif result.done then
     if desired_path:find"left" then
+      ignore_risk = true
       desired_path = 'lane_inner'
     elseif desired_path:find"right" then
+      ignore_risk = true
       desired_path = 'lane_outer'
     end
     my_path = paths[desired_path]
@@ -259,7 +262,9 @@ end
 local function parse_risk(msg)
   if msg.go ~= ok_to_go then
     ok_to_go = msg.go
-    if desired_path~='lane_outer' and desired_path~='lane_inner' then
+    if ignore_risk then
+      ok_to_go = true
+    elseif desired_path~='lane_outer' and desired_path~='lane_inner' then
       print("OK to go?", ok_to_go)
       --fsm_control:dispatch(ok_to_go and "go" or "stop")
     end
