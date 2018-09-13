@@ -194,18 +194,22 @@ local function populate_dev()
   return devices
 end
 
-local function parse_arg(arg, use_dev)
+local function parse_arg(arguments, use_dev)
+  if type(arguments)~='table' then
+    return false, "Need argument as table"
+  end
   local flags = {
     debug = tonumber(os.getenv"DEBUG")
   }
   do
     local i = 1
-    while i<=#arg do
-      local a = arg[i]
+    local n_args = #arguments
+    while i<=n_args do
+      local a = arguments[i]
       i = i + 1
-      local flag = a:match"^--([%w_]+)"
+      local flag = a:match"^%-%-([%w_]+)"
       if flag then
-        local val = arg[i]
+        local val = arguments[i]
         if not val then break end
         flags[flag] = tonumber(val) or val
       else
@@ -333,7 +337,8 @@ function lib.play(fnames, realtime, update, cb)
 end
 
 if IS_MAIN then
-  local msg = arg[1]
+  local flags = parse_arg(arg, false)
+  local msg = flags[1]
   if msg then
     print("Sending", msg)
     assert(announce('houston', {evt=msg}))

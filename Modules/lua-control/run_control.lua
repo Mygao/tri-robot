@@ -241,18 +241,16 @@ local function parse_vicon(msg)
   result.steering = steering
   result.velocity = 6 -- duty cycle
 
-  if not ok_to_go then
+  if fsm_control.current_state == 'botStop' then
     result.velocity = 0
-  elseif lead_offset < 0.8 then
-    result.velocity = 0
-  elseif lead_offset < 1.5 then
-    result.velocity = (lead_offset - 0.8) / (1.5 - 0.8) * result.velocity
+  else
+    -- Go logic
+    if lead_offset < 0.8 then
+      result.velocity = 0
+    elseif lead_offset < 1.5 then
+      result.velocity = (lead_offset - 0.8) / (1.5 - 0.8) * result.velocity
+    end
   end
-
-  -- if fsm_control.current_state == 'botStop' then
-  --   result.velocity = 0
-  -- elseif fsm_control.current_state == 'botStop' then
-  -- end
 
   -- Keep track of our state
   result.current_state = fsm_control.current_state
@@ -267,6 +265,7 @@ local function parse_risk(msg)
   if msg.ok~=ok_to_go then
     ok_to_go = msg.go
     print("OK to go?", ok_to_go)
+    fsm_control:dispatch(ok_to_go and "go" or "stop")
   end
 end
 
