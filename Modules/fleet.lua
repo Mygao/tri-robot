@@ -6,10 +6,20 @@ for i=1,7 do
   table.insert(names, name)
 end
 for _, name in ipairs(names) do
-  local cmd = {
-  'ssh -C -t nvidia@'..name..'.local ',
-  '"cd dev/tri-robot/Modules; git pull; source env.bash; tmux new -d -s icra -n vicon; tmux new-window -t icra -n vesc; tmux new-window -t icra -n control"',}
-  cmd = table.concat(cmd)
-  print(cmd)
-  os.execute(cmd)
+  local cmds = {
+               "cd dev/tri-robot/Modules",
+               "git pull",
+               "source env.bash",
+               "tmux new -d -s icra -n vicon",
+               "tmux new-window -t icra -n vesc",
+               "tmux new-window -t icra -n control",
+               "tmux new-window -t icra -n houston",
+               "tmux new-window -t icra -n risk",
+               -- Commands
+               "tmux send-keys -t icra:vesc 'cd luajit-racecar' Enter" -- Enter -> C-m
+               }
+  local cmds_str = table.concat(cmds, "; ")
+  local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
+  print(ssh_cmd)
+  -- os.execute(ssh_cmd)
 end
