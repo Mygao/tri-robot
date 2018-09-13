@@ -192,9 +192,9 @@ local function add_state(self, state, loop)
   -- Add the loop
   add_coro(self, state, loop)
   -- Check if we should initialize the FSM
-  -- if type(self.current_state) ~= 'string' then
-  --   self.current_state = state
-  -- end
+  if type(self.current_state) ~= 'string' then
+    self.current_state = state
+  end
   return true
 end
 

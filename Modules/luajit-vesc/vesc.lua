@@ -7,6 +7,7 @@ local bxor = require'bit'.bxor
 local lshift = require'bit'.lshift
 local rshift = require'bit'.rshift
 local coyield = require'coroutine'.yield
+local floor = require'math'.floor
 
 local function lshift16(val, amt)
   return band(lshift(val, amt or 1), 0xFFFF)
@@ -90,7 +91,7 @@ function lib.duty_cycle(val)
   elseif val<-100 or val>100 then
     return false, "Bad duty cycle range! [-100, 100]"
   end
-  val = math.floor(val * 1e3)
+  val = floor(val * 1e3)
   return set_crc{
     -- Set the length
     0x02, 0x05,
@@ -116,7 +117,7 @@ function lib.current(val)
   elseif val<-MAX_CURRENT or val>MAX_CURRENT then
     return false, "Bad current range!"
   end
-  val = math.floor(val)
+  val = floor(val)
   return set_crc{
     -- Set the length
     0x02, 0x05,
@@ -141,7 +142,7 @@ function lib.current_brake(val)
   elseif val<-MAX_CURRENT or val>MAX_CURRENT then
     return false, "Bad current range!"
   end
-  val = math.floor(val)
+  val = floor(val)
   return set_crc{
     -- Set the length
     0x02, 0x05,
@@ -159,7 +160,7 @@ function lib.current_brake(val)
 end
 
 local MAX_RPM = 30000
-local ID_SET_RPM = 0x07
+local ID_SET_RPM = 0x08
 function lib.rpm(val)
   -- input rotations per minute
   if type(val)~='number' then
@@ -167,7 +168,7 @@ function lib.rpm(val)
   elseif val<-MAX_RPM or val>MAX_RPM then
     return false, "Bad rpm range!"
   end
-  val = math.floor(val)
+  val = floor(val)
   return set_crc{
     -- Set the length
     0x02, 0x05,
@@ -185,7 +186,7 @@ function lib.rpm(val)
 end
 
 local MAX_POSITION = 100000
-local ID_SET_POSITION = 0x08
+local ID_SET_POSITION = 0x09
 function lib.position(val)
   -- input motor position
   if type(val)~='number' then
@@ -193,7 +194,7 @@ function lib.position(val)
   elseif val<-MAX_POSITION or val>MAX_POSITION then
     return false, "Bad position range!"
   end
-  val = math.floor(val)
+  val = floor(val)
   return set_crc{
     -- Set the length
     0x02, 0x05,
@@ -219,7 +220,7 @@ function lib.servo_position(val)
   elseif val<0 or val>1 then
     return false, "Bad servo position range [0,1]!"
   end
-  val = math.floor(val * 1e3)
+  val = floor(val * 1e3)
   return set_crc{
     -- Set the length
     0x02, 0x03,

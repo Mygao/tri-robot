@@ -1,6 +1,7 @@
 #!/usr/bin/env luajit
 local coresume = require'coroutine'.resume
 local cocreate = require'coroutine'.create
+local max, min = require'math'.max, require'math'.min
 local unpack = unpack or require'table'.unpack
 
 local racecar = require'racecar'
@@ -22,7 +23,7 @@ local fsm_control = cofsm.new{
   {'botStop', 'go', 'botGo'},
   {'botGo', 'stop', 'botStop'}
 }
-fsm_control:dispatch('go')
+print('fsm_control', fsm_control.current_state)
 
 local waypoints = {}
 waypoints.lane_inner = {
@@ -158,7 +159,6 @@ local function parse_vicon(msg)
   -- TODO: Stale for each ID...
   -- may be the latest for that vehicle
   local frame = msg.frame
-  --print("Frame", frame)
   if frame < last_frame then
     return false, "Stale data"
   end
@@ -174,28 +174,29 @@ local function parse_vicon(msg)
   end
   -- Update the robot pose
   local pose_rbt = poses[my_id]
-  --print("Pose", pose_rbt)
   if not pose_rbt then return end
   -- Check if a car is in my lane :)
   local my_lane = lanes[my_id]
-  --print("My Lane", my_lane.name_path, my_lane.id_path, my_lane.dist_sq)
   lanes[my_id] = nil
 
+  -- If in a lane, then see who is our lead vehicle
   local lead_offset, lead_vehicle = math.huge, nil
-  for id, lane in pairs(lanes) do
-    if lane.name_path==my_lane.name_path then
-      --print(lane.id_path, my_lane.id_path, lane.name_path, my_lane.name_path)
-      -- TODO: Check the relative pose between us and that ID
-      local path_offset = (lane.id_path - my_lane.id_path) * ds
-      --print(id, "in my lane", lane.id_path, "distance", path_offset)
-      if path_offset > 0 then
-        if path_offset < lead_offset then
-          lead_vehicle = id
-          lead_offset = path_offset
+  if my_lane then
+    for id, lane in pairs(lanes) do
+      if lane.name_path==my_lane.name_path then
+        --print(lane.id_path, my_lane.id_path, lane.name_path, my_lane.name_path)
+        -- TODO: Check the relative pose between us and that ID
+        local path_offset = (lane.id_path - my_lane.id_path) * ds
+        --print(id, "in my lane", lane.id_path, "distance", path_offset)
+        if path_offset > 0 then
+          if path_offset < lead_offset then
+            lead_vehicle = id
+            lead_offset = path_offset
+          end
         end
+  --    else
+  --      print(id, "not in my lane", lane.name_path)
       end
---    else
---      print(id, "not in my lane", lane.name_path)
     end
   end
 
@@ -233,10 +234,6 @@ local function parse_vicon(msg)
   -- print("Path", result.id_path, my_path[result.id_path])
   -- print("Steering angle", steering * racecar.RAD_TO_DEG)
 
-  if lead_offset < 0.9 then
-    print("Stop to not hit!!", lead_vehicle)
-  end
-
   -- For sending to the vesc
   result.steering = steering
   result.velocity = 6 -- duty cycle
@@ -244,12 +241,23 @@ local function parse_vicon(msg)
   if fsm_control.current_state == 'botStop' then
     result.velocity = 0
   else
-    -- Go logic
-    if lead_offset < 0.8 then
-      result.velocity = 0
-    elseif lead_offset < 1.5 then
-      result.velocity = (lead_offset - 0.8) / (1.5 - 0.8) * result.velocity
+    local d_stop = 0.8
+    local d_near = 1.5
+    local ratio = (lead_offset - d_stop) / (d_near - d_stop)
+    ratio = max(0, min(ratio, 1))
+    result.velocity = ratio * result.velocity
+    if lead_offset < d_near then
+      print(string.format("Stopping for %s | [%.2f -> %.2f]",
+                          lead_vehicle, ratio, result.velocity))
     end
+    -- Go logic
+    --[[
+    if lead_offset < d_stop then
+      result.velocity = 0
+    elseif lead_offset < d_near then
+      result.velocity = ratio * result.velocity
+    end
+    --]]
   end
 
   -- Keep track of our state
@@ -275,9 +283,8 @@ local function parse_houston(msg)
     print(k, v)
   end
   -- Dispatch events
-  if msg.evt then
-    fsm_control:dispatch(msg.evt)
-  end
+  local ret, err = fsm_control:dispatch(msg.evt)
+  if not ret then print("FSM", err) end
 end
 
 local cb_tbl = {
