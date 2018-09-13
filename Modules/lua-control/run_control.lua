@@ -188,15 +188,15 @@ local function parse_vicon(msg)
   local running, result, err = coresume(co_control, pose_rbt)
   if not running then
     print("Not running", result)
-    log_announce(log, { steering = 0, velocity = 0 }, "control")
+    log_announce(log, { steering = 0, rpm = 0 }, "control")
     return os.exit()
   elseif type(result)~='table' then
     print("Improper", result, err)
-    log_announce(log, { steering = 0, velocity = 0 }, "control")
+    log_announce(log, { steering = 0, rpm = 0 }, "control")
     return
   elseif result.err then
     print("Error", result.err)
-    log_announce(log, { steering = 0, velocity = 0 }, "control")
+    log_announce(log, { steering = 0, rpm = 0 }, "control")
     return
   elseif result.done then
     if desired_path:find"left" then
@@ -219,19 +219,22 @@ local function parse_vicon(msg)
 
   -- For sending to the vesc
   result.steering = steering
-  result.velocity = 6 -- duty cycle
+  -- result.duty = 6
+  result.rpm = 0.5 * racecar.RPM_PER_MPS
 
   if fsm_control.current_state == 'botStop' then
-    result.velocity = 0
+    -- result.duty = 0
+    result.rpm = 0
   else
     local d_stop = 0.8
     local d_near = 1.5
     local ratio = (lead_offset - d_stop) / (d_near - d_stop)
     ratio = max(0, min(ratio, 1))
-    result.velocity = ratio * result.velocity
+    -- result.duty = ratio * result.duty
+    result.rpm = ratio * result.rpm
     if lead_offset < d_near then
       print(string.format("Stopping for %s | [%.2f -> %.2f]",
-                          lead_vehicle, ratio, result.velocity))
+                          lead_vehicle, ratio, result.rpm or result.duty))
     end
     -- Go logic
     --[[

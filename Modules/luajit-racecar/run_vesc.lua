@@ -33,7 +33,7 @@ end
 
 local cmds = {
   servo = 0,
-  velocity = 0,
+  duty = 0,
   sensor_request = true
 }
 
@@ -46,7 +46,8 @@ local function steering2servo(steering)
 end
 local function cb_control(obj)
   cmds.servo = steering2servo(tonumber(obj.steering) or 0)
-  cmds.velocity = tonumber(obj.velocity) or 0
+  cmds.duty = tonumber(obj.duty)
+  cmds.rpm = tonumber(obj.rpm)
 end
 
 -- TODO: Put into VESC library
@@ -54,9 +55,11 @@ local coro_vesc = coroutine.create(vesc.update)
 
 -- Read to find data
 local function update_read(e)
-  if e~=1 then
+  if e~=1 and fd_vesc >= 0 then
     print("Reading", e)
     close(fd_vesc)
+    fd_vesc = -1
+    return os.exit()
   end
   -- TODO: Check the type of event:
   -- e.g. in case the device was unplugged
@@ -95,10 +98,14 @@ local function cb_loop(t_us)
     write(fd_vesc, schar(unpack(pkt_servo)))
     cmds.servo = false
   end
-  local pkt_velocity = vesc.duty_cycle(cmds.velocity)
-  if pkt_velocity then
-    write(fd_vesc, schar(unpack(pkt_velocity)))
-    cmds.velocity = false
+  local pkt_duty = cmds.duty and vesc.duty_cycle(cmds.duty)
+  local pkt_rpm = cmds.rpm and vesc.rpm(cmds.rpm)
+  if pkt_duty then
+    write(fd_vesc, schar(unpack(pkt_duty)))
+    cmds.duty = false
+  elseif pkt_rpm then
+    write(fd_vesc, schar(unpack(pkt_rpm)))
+    cmds.rpm = false
   end
   -- Save the commands in the log file
   log_announce(log, cmds, 'vesc')
