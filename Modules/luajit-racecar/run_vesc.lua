@@ -12,7 +12,7 @@ local has_logger, logger = pcall(require, 'logger')
 local vesc = require'vesc'
 local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
-            and assert(logger.new('vesc', flags.home.."/logs"))
+            and assert(logger.new('vesc', racecar.HOME.."/logs"))
 
 local fd_vesc, read, write, close
 if flags.vesc then

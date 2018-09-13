@@ -9,7 +9,7 @@ local vicon = require'vicon'
 local time = require'unix'.time
 local poll = require'unix'.poll
 local logger = require'logger'
-local log = flags.log~=0 and assert(logger.new('vicon', flags.home.."/logs"))
+local log = flags.log~=0 and assert(logger.new('vicon', racecar.HOME.."/logs"))
 
 local skt = require'skt'
 local transport = assert(skt.open{

@@ -1,3 +1,6 @@
+#!/usr/bin/env luajit
+local IS_MAIN = arg[-1]=='luajit' and arg[0]:find'racecar.lua' and ... ~= 'racecar'
+
 local coresume = require'coroutine'.resume
 local costatus = require'coroutine'.status
 local min = require'math'.min
@@ -28,12 +31,13 @@ local HOSTNAME = io.popen"hostname":read"*line"
 local nan = 0/0
 local RAD_TO_DEG = 180/math.pi
 local DEG_TO_RAD = math.pi/180
-
+local RACECAR_HOME = os.getenv"RACECAR_HOME" or '.'
 local lib = {
   nan = nan,
   RAD_TO_DEG = RAD_TO_DEG,
   DEG_TO_RAD = DEG_TO_RAD,
-  HOSTNAME = HOSTNAME
+  HOSTNAME = HOSTNAME,
+  HOME = RACECAR_HOME
 }
 
 -- Jitter information
@@ -51,6 +55,7 @@ if has_lcm then
   skt_mcl, err = skt.open{
     address = MCL_ADDRESS,
     port = MCL_PORT,
+    ttl = IS_MAIN and 1 or 0
   }
   if not skt_mcl then
     io.stderr:write(string.format("MCL not available: %s\n",
@@ -124,6 +129,7 @@ local function announce(channel, str, cnt, t_us)
   return #str
 end
 lib.announce = announce
+
 function lib.log_announce(log, obj, channel)
   local cnt, t_us
   if log then
@@ -188,9 +194,8 @@ local function populate_dev()
   return devices
 end
 
-function lib.parse_arg(arg, use_dev)
+local function parse_arg(arg, use_dev)
   local flags = {
-    home = os.getenv"RACECAR_HOME" or '.',
     debug = tonumber(os.getenv"DEBUG")
   }
   do
@@ -219,6 +224,7 @@ function lib.parse_arg(arg, use_dev)
   end
   return flags
 end
+lib.parse_arg = parse_arg
 
 -- Run through the log
 --[[
@@ -324,6 +330,14 @@ function lib.play(fnames, realtime, update, cb)
     t_log1 = t_us
     local ret = realtime and cb and cb(dt0_log, ch)
   until not lib.running
+end
+
+if IS_MAIN then
+  local msg = arg[1]
+  if msg then
+    print("Sending", msg)
+    assert(announce('houston', {evt=msg}))
+  end
 end
 
 return lib

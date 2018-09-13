@@ -28,6 +28,32 @@ var risk_over_time = [], risk_times = [];
 
 document.addEventListener("DOMContentLoaded", function(event) {
 
+  const munpack = msgpack5().decode;
+  const mpack = msgpack5().encode;
+  const MAXIMUM_HEADER_LENGTH = 300;
+  const LCM_PUBLISH_BUFFER_SIZE = 8192;
+  var msg = new Uint8Array(LCM_PUBLISH_BUFFER_SIZE);
+  var sequence_id = new Uint32Array(1);
+  var ch = 'houston';
+  msg.set([ 0x4c, 0x43, 0x30, 0x32 ]); // MAGIC_LCM2
+  msg.set(sequence_id, 4);
+  msg.set(Uint8Array.from(ch), 8);
+  msg.set(mpack({"evt" : 'go'}), ch.length + 8);
+
+  document.getElementById('go').addEventListener('click', () => {
+    msg.set(sequence_id, 4);
+    msg.set(Uint8Array.from(ch), 8);
+    msg.set(mpack({"evt" : 'go'}), ch.length + 8);
+    console.log(msg);
+    ws.send(msg);
+    sequence_id[0]++;
+  });
+  document.getElementById('stop').addEventListener('click', () => {
+    var msg = new Uint8Array(
+        [ MAGIC_LCM2, sequence_id, 'houston', mpack({"evt" : 'go'}) ]);
+    ws.send(msg);
+  });
+
   const d3colors = Plotly.d3.scale.category10();
 
   var likelihood_selection = 'beliefs';
@@ -74,7 +100,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
   };
   const coord2svg = (p) => { return [ p[0], -p[1], -p[2] ]; };
 
-  const munpack = msgpack5().decode;
   const observer_svg = document.getElementById('observers');
   const vehicles_svg = document.getElementById('vehicles');
   const obstacles_svg = document.getElementById('obstacles');
