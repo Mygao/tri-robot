@@ -44,7 +44,7 @@ waypoints.lane_outer =  {
   {2.1, -1.5}, {2.1, 1}
 }
 waypoints.lane_enter = {
-  {-2.5, 1.5}, {-1, 1.5}
+  {-2.5, 1.5}, {-1.25, 1.5}
 }
 waypoints.turn_left = {
   {-1.5, 1.5}, {-0.8, 1.5}, {-0.7705948579011315, 1.5014445819983409}, {-0.7414729033951611, 1.5057644158790309}, {-0.712914596823661, 1.5129178992803374}, {-0.6851949702904727, 1.5228361402466142}, {-0.6585809789522005, 1.5354236206954937}, {-0.6333289300941191, 1.5505591163092367}, {-0.6096820147509061, 1.5680968639911792}, {-0.5878679656440355, 1.587867965644036}, {-0.5680968639911788, 1.6096820147509066}, {-0.5505591163092364, 1.6333289300941196}, {-0.5354236206954934, 1.6585809789522008}, {-0.522836140246614, 1.6851949702904732}, {-0.5129178992803374, 1.7129145968236614}, {-0.5057644158790309, 1.7414729033951617}, {-0.5014445819983409, 1.770594857901132}, {-0.5, 1.8},
@@ -236,6 +236,9 @@ local function parse_vicon(msg)
     local d_near = 1.5
     local ratio = (lead_offset - d_stop) / (d_near - d_stop)
     ratio = max(0, min(ratio, 1))
+    if desired_path~='lane_outer' and desired_path~='lane_outer' then
+      ratio = ok_to_go and ratio or 0
+    end
     -- result.duty = ratio * result.duty
     result.rpm = ratio * result.rpm
     if lead_offset < d_near then
@@ -258,7 +261,7 @@ local function parse_risk(msg)
     ok_to_go = msg.go
     if desired_path~='lane_outer' and desired_path~='lane_outer' then
       print("OK to go?", ok_to_go)
-      fsm_control:dispatch(ok_to_go and "go" or "stop")
+      --fsm_control:dispatch(ok_to_go and "go" or "stop")
     end
   end
 end
