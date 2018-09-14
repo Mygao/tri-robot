@@ -39,13 +39,13 @@ for i, name in ipairs(names) do
   local cmds_str = table.concat(cmds, "; ")
   local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
   print(ssh_cmd)
-  os.execute(ssh_cmd)
+  -- os.execute(ssh_cmd)
 
   -- Shutting down
   local cmds = {"tmux kill-session -t icra", "sudo shutdown -h now"}
   local cmds_str = table.concat(cmds, "; ")
   local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
   print(ssh_cmd)
-  -- os.execute(ssh_cmd)
+  os.execute(ssh_cmd)
 end
 

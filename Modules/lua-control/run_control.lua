@@ -253,15 +253,18 @@ local function parse_vicon(msg)
       print(string.format("Stopping for %s | [%.2f -> %.2f]",
                           lead_vehicle, ratio, result.rpm or result.duty))
     end
-  elseif entered_intersection==false then
-    local ratio = (min_lane_dist - 0.3) / (1.0 - 0.3)
+  elseif entered_intersection==false or straight_start then
+    result.rpm = 0.25 * racecar.RPM_PER_MPS
+    local ratio = (min_lane_dist - 0.6) / (1.6 - 0.6)
     ratio = max(0, min(ratio, 1))
     result.rpm = ok_to_go and ratio * result.rpm or 0
   elseif entered_intersection then
     -- TODO: Check t_clear
-    local max_vel = 1
-    result.duty = math.min((min_vel_clear or 0.5) * racecar.RPM_PER_MPS, max_vel)
+    local max_vel = 2
+    local vel = math.min((min_vel_clear or 0.5), max_vel)
+    result.rpm = vel * racecar.RPM_PER_MPS
   end
+  print('result.rpm', result.rpm)
 
   -- Keep track of our state
   result.current_state = fsm_control.current_state
@@ -283,7 +286,7 @@ local function parse_risk(msg)
   end
   if type(msg.entered)=='table' then
     entered_intersection, min_lane_dist, obs_lane_dist = unpack(msg.entered)
-    print(entered_intersection, min_lane_dist, obs_lane_dist)
+    --print(entered_intersection, min_lane_dist, obs_lane_dist)
   end
   -- Use t_clear checking
   if type(msg.tclear_checks)=='table' and type(msg.risk_checks)=='table' then
@@ -295,9 +298,16 @@ local function parse_risk(msg)
       if risk < risk_nogo then break end
     end
     --
-    print("t_clear of ", t_clear, my_path.length, my_path.length / t_clear)
+    --print("t_clear of ", t_clear, my_path.length, my_path.length / t_clear)
+    if risk > risk_nogo then
+      max_t_clear = 0
+      min_vel_clear = math.huge
+    end
     max_t_clear = t_clear
     min_vel_clear = my_path.length / t_clear
+if msg.go then
+    print("tc and vtc", max_t_clear, min_vel_clear)
+end
   end
 end
 
