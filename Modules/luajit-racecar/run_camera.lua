@@ -5,7 +5,7 @@ local devname = flags.uvc or flags[1] or '/dev/video0'
 local time = require'unix'.time
 local racecar = require'racecar'
 local log_announce = racecar.log_announce
-local jitter_tbl = racecar.jitter_tbl
+-- local get_jitter = racecar.get_jitter
 
 -- local width, height = 1344, 376
 local width, height = 320, 240
@@ -22,6 +22,8 @@ local logger = require'logger'
 local log_dir = racecar.HOME.."/logs"
 local log = flags.log~=0 and assert(logger.new(channel, log_dir))
 
+local fd_cam = camera:descriptor()
+
 local function exit()
   if log then log:close() end
   camera:close()
@@ -29,24 +31,28 @@ local function exit()
 end
 racecar.handle_shutdown(exit)
 
-local t_debug = time()
-local n = 0
-while racecar.running do
-  local img, sz = camera:get_image(-1)
+local function update_read(e)
+  local img, sz = camera:get_image()
   local t = time()
-  if img then
-    local img_jpg = c_yuyv:compress(img, sz, width, height)
-    local obj = {
-      t = t, jpg = img_jpg
-    }
-    log_announce(log, obj, channel)
-    -- n = n + 1
-  end
-  local dt_debug = t - t_debug
-  if dt_debug > 1 then
-    io.write(table.concat(jitter_tbl(), '\n'), '\n')
-    t_debug = t
-    n = 0
-  end
+  if not img then return end
+  local img_jpg = c_yuyv:compress(img, sz, width, height)
+  local obj = {
+    t = t, jpg = img_jpg
+  }
+  log_announce(log, obj, channel)
 end
 exit()
+
+-- Listen at 100Hz
+local cb_tbl = {
+  houston = function() end
+}
+local fd_updates = {
+  [fd_cam] = update_read
+}
+racecar.listen{
+  channel_callbacks = cb_tbl,
+  fd_updates = fd_updates,
+  loop_rate = 30,
+  loop_fn = cb_loop
+}
