@@ -8,7 +8,8 @@ end
 table.insert(names, 'tri1')
 for i, name in ipairs(names) do
   local is_inner = i%2==0
-  local is_log = name=='tri1'
+  local is_obs = name=='tri1'
+  local is_log = is_obs
   local cmds = {
                "cd dev/tri-robot/Modules",
                "git pull",
@@ -27,17 +28,24 @@ for i, name in ipairs(names) do
                "tmux send-keys -t icra:vesc 'cd luajit-racecar' Enter",
                "tmux send-keys -t icra:vesc 'luajit run_vesc.lua "..(is_log and "" or "--log 0").."' Enter",
                --
-               "tmux send-keys -t icra:control 'cd lua-control' Enter",
-               "tmux send-keys -t icra:control 'luajit run_control.lua "..(is_log and "" or "--log 0").." --desired "..(is_inner and "lane_inner" or "lane_outer").. "' Enter",
                }
+  if is_obs then
+    table.insert(cmds, "tmux send-keys -t icra:control 'cd lua-control' Enter")
+    table.insert(cmds, "tmux send-keys -t icra:control 'luajit run_control.lua "..(is_log and "" or "--log 0").." --desired turn_left' ")
+  else
+    table.insert(cmds, "tmux send-keys -t icra:control 'cd lua-control' Enter")
+    table.insert(cmds, "tmux send-keys -t icra:control 'luajit run_control.lua "..(is_log and "" or "--log 0").." --desired "..(is_inner and "lane_inner" or "lane_outer").. "' Enter")
+  end
+  local cmds_str = table.concat(cmds, "; ")
+  local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
+  print(ssh_cmd)
+  os.execute(ssh_cmd)
+
+  -- Shutting down
+  local cmds = {"tmux kill-session -t icra", "sudo shutdown -h now"}
   local cmds_str = table.concat(cmds, "; ")
   local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
   print(ssh_cmd)
   -- os.execute(ssh_cmd)
-
-  local cmds = {"tmux kill-session -t icra", "sudo shutdown -h now"}
-  local cmds_str = table.concat(cmds, "; ")
-  local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
-  os.execute(ssh_cmd)
 end
 

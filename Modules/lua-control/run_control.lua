@@ -237,7 +237,7 @@ local function parse_vicon(msg)
   if fsm_control.current_state == 'botStop' then
     -- result.duty = 0
     result.rpm = 0
-  elseif desired_path=='lane_outer' or desired_path=='lane_outer' then
+  elseif desired_path=='lane_outer' or desired_path=='lane_inner' then
     local d_stop = 0.8
     local d_near = 1.5
     local ratio = (lead_offset - d_stop) / (d_near - d_stop)
@@ -247,7 +247,7 @@ local function parse_vicon(msg)
       print(string.format("Stopping for %s | [%.2f -> %.2f]",
                           lead_vehicle, ratio, result.rpm or result.duty))
     end
-  elseif not entered_intersection then
+  elseif entered_intersection==false then
     local ratio = (min_lane_dist - 0.3) / (1.0 - 0.3)
     ratio = max(0, min(ratio, 1))
     result.rpm = ok_to_go and ratio * result.rpm or 0
