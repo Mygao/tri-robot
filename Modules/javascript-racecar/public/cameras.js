@@ -8,7 +8,9 @@ document.addEventListener("DOMContentLoaded", function(event) {
   const munpack = msgpack5().decode;
 
   // Camera and map images
-  var img_camera = document.getElementById('camera');
+  var img_video1 = document.getElementById('video1');
+  var img_video2 = document.getElementById('video2');
+  var img_video3 = document.getElementById('video3');
 
   ws.onmessage = (e) => {
     // console.log(e.data);
@@ -26,24 +28,24 @@ document.addEventListener("DOMContentLoaded", function(event) {
     if (video3) {
       cur.video3 = false;
       const blobJ = new Blob([ video3.jpg ], {'type' : 'image/jpeg'});
-      window.URL.revokeObjectURL(img_camera.src);
-      img_camera.src = window.URL.createObjectURL(blobJ);
+      window.URL.revokeObjectURL(img_video1.src);
+      img_video1.src = window.URL.createObjectURL(blobJ);
       // img_camera.onload = (e) => { console.log("done") };
       }
     const video1 = cur.video1;
     if (video1) {
       cur.video1 = false;
       const blobJ = new Blob([ video1.jpg ], {'type' : 'image/jpeg'});
-      window.URL.revokeObjectURL(img_camera.src);
-      img_camera.src = window.URL.createObjectURL(blobJ);
+      window.URL.revokeObjectURL(img_video2.src);
+      img_video2.src = window.URL.createObjectURL(blobJ);
       // img_camera.onload = (e) => { console.log("done") };
       }
     const video2 = cur.video2;
     if (video2) {
       cur.video2 = false;
       const blobJ = new Blob([ video2.jpg ], {'type' : 'image/jpeg'});
-      window.URL.revokeObjectURL(img_camera.src);
-      img_camera.src = window.URL.createObjectURL(blobJ);
+      window.URL.revokeObjectURL(img_video2.src);
+      img_video2.src = window.URL.createObjectURL(blobJ);
       // img_camera.onload = (e) => { console.log("done") };
     }
   };
