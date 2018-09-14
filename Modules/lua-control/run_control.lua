@@ -69,7 +69,9 @@ end
 
 ----------------------
 local my_path
+local straight_start = false
 if desired_path:find'turn' and paths[desired_path] then
+  straight_start = true
   my_path = paths.lane_enter
 else
   my_path = assert(paths[desired_path], "No desired path found: "..tostring(desired_path))
@@ -209,7 +211,11 @@ local function parse_vicon(msg)
     log_announce(log, { steering = 0, rpm = 0 }, "control")
     return
   elseif result.done then
-    if desired_path:find"left" then
+    print("DONE!", desired_path)
+    if straight_start then
+      straight_start = false
+      my_path = paths[desired_path]
+    elseif desired_path:find"left" then
       ignore_risk = true
       desired_path = 'lane_inner'
     elseif desired_path:find"right" then
@@ -253,7 +259,8 @@ local function parse_vicon(msg)
     result.rpm = ok_to_go and ratio * result.rpm or 0
   elseif entered_intersection then
     -- TODO: Check t_clear
-    -- result.duty = ratio * result.duty
+    local max_vel = 1
+    result.duty = math.min((min_vel_clear or 0.5) * racecar.RPM_PER_MPS, max_vel)
   end
 
   -- Keep track of our state
@@ -289,6 +296,8 @@ local function parse_risk(msg)
     end
     --
     print("t_clear of ", t_clear, my_path.length, my_path.length / t_clear)
+    max_t_clear = t_clear
+    min_vel_clear = my_path.length / t_clear
   end
 end
 
