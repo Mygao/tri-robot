@@ -23,6 +23,8 @@ local wheel_base = 0.3
 local ok_to_go = true
 local ignore_risk = false
 local risk_nogo = 0.03
+local vel_h = false
+local vel_max = 1.5
 
 local cofsm = require'cofsm'
 local fsm_control = cofsm.new{
@@ -260,8 +262,7 @@ local function parse_vicon(msg)
     result.rpm = ok_to_go and ratio * result.rpm or 0
   elseif entered_intersection then
     -- TODO: Check t_clear
-    local max_vel = 2
-    local vel = math.min((min_vel_clear or 0.5), max_vel)
+    local vel = math.min((min_vel_clear or 0.5), vel_max)
     result.rpm = vel * racecar.RPM_PER_MPS
   end
   print('result.rpm', result.rpm)
@@ -318,10 +319,20 @@ local function parse_houston(msg)
   if not ret then print("FSM", err) end
 end
 
+-- local JOYSTICK_TO_DUTY = 11 / 32767
+-- local JOYSTICK_TO_RPM = 30000 / 32767
+local function parse_joystick(msg)
+  if type(msg.buttons)~='table' or type(msg.axes)~='table' then
+    return
+  end
+  vel_h = vel_max * msg.axes[1] / 32767
+end
+
 local cb_tbl = {
   vicon = parse_vicon,
   risk = parse_risk,
-  houston = parse_houston
+  houston = parse_houston,
+  joystick = parse_joystick,
 }
 
 racecar.listen{
