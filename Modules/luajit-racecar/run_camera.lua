@@ -53,6 +53,6 @@ local fd_updates = {
 racecar.listen{
   channel_callbacks = cb_tbl,
   fd_updates = fd_updates,
-  loop_rate = 30,
-  loop_fn = cb_loop
+  -- loop_rate = 30,
+  -- loop_fn = cb_loop
 }
