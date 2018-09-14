@@ -51,5 +51,5 @@ document.addEventListener("DOMContentLoaded", function(event) {
   };
 
   draw();
-  window.addEventListener('resize', onWindowResize, false);
+
 });
