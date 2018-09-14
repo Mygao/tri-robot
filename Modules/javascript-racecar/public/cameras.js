@@ -24,20 +24,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
   const draw = (timestamp) => {
     window.requestAnimationFrame(draw);
     const t = Date.now();
-    const video3 = cur.video3;
-    if (video3) {
-      cur.video3 = false;
-      const blobJ = new Blob([ video3.jpg ], {'type' : 'image/jpeg'});
-      window.URL.revokeObjectURL(img_video1.src);
-      img_video1.src = window.URL.createObjectURL(blobJ);
-      // img_camera.onload = (e) => { console.log("done") };
-      }
     const video1 = cur.video1;
     if (video1) {
       cur.video1 = false;
       const blobJ = new Blob([ video1.jpg ], {'type' : 'image/jpeg'});
-      window.URL.revokeObjectURL(img_video2.src);
-      img_video2.src = window.URL.createObjectURL(blobJ);
+      window.URL.revokeObjectURL(img_video1.src);
+      img_video1.src = window.URL.createObjectURL(blobJ);
       // img_camera.onload = (e) => { console.log("done") };
       }
     const video2 = cur.video2;
@@ -46,6 +38,14 @@ document.addEventListener("DOMContentLoaded", function(event) {
       const blobJ = new Blob([ video2.jpg ], {'type' : 'image/jpeg'});
       window.URL.revokeObjectURL(img_video2.src);
       img_video2.src = window.URL.createObjectURL(blobJ);
+      // img_camera.onload = (e) => { console.log("done") };
+      }
+    const video3 = cur.video3;
+    if (video3) {
+      cur.video3 = false;
+      const blobJ = new Blob([ video3.jpg ], {'type' : 'image/jpeg'});
+      window.URL.revokeObjectURL(img_video3.src);
+      img_video3.src = window.URL.createObjectURL(blobJ);
       // img_camera.onload = (e) => { console.log("done") };
     }
   };
