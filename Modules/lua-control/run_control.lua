@@ -270,6 +270,10 @@ local function parse_vicon(msg)
   -- Keep track of our state
   result.current_state = fsm_control.current_state
 
+  if vel_h then
+    result.rpm = vel_h * racecar.RPM_PER_MPS
+  end
+
   log_announce(log, result, "control")
   -- For GUI plotting
   -- env.observer = pose_rbt
@@ -325,7 +329,7 @@ local function parse_joystick(msg)
   if type(msg.buttons)~='table' or type(msg.axes)~='table' then
     return
   end
-  vel_h = vel_max * msg.axes[2] / 32767
+  vel_h = vel_max * msg.axes[2] / -32767
 end
 
 local cb_tbl = {
