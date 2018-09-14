@@ -23,12 +23,13 @@ const eps = 1e-4;
 const to_rainbow =
     (v, a) => { return 'hsla(' + floor(360 * v) + ', 100%, 50%, ' + a + ')'; };
 
-const n_timesteps = 75; // 100;
+const n_timesteps = 100; // 75; // 100;
 var risk_over_time = [], risk_times = [];
 
 document.addEventListener("DOMContentLoaded", function(event) {
 
   const munpack = msgpack5().decode;
+  /*
   const mpack = msgpack5().encode;
   const MAXIMUM_HEADER_LENGTH = 300;
   const LCM_PUBLISH_BUFFER_SIZE = 8192;
@@ -53,6 +54,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
         [ MAGIC_LCM2, sequence_id, 'houston', mpack({"evt" : 'go'}) ]);
     ws.send(msg);
   });
+  */
 
   const d3colors = Plotly.d3.scale.category10();
 
@@ -508,13 +510,16 @@ document.addEventListener("DOMContentLoaded", function(event) {
           mode : 'lines',
           // type : 'surface',
           name : 't_clear=' + tc.toFixed(2),
+          line : {
+            width : 12,
+          }
         };
       });
 
       // data.push({z : [ [ 0.1, 0.1 ], [ 0.1, 0.1 ] ], type : 'surface'});
       data.push({
         showscale : false,
-        z : [ [ 0.1, 0.1 ], [ 0.1, 0.1 ] ],
+        z : [ [ 0.03, 0.03 ], [ 0.03, 0.03 ] ],
         x : [
           [ risk_times[0], risk_times[0] ],
           [ risk_times[n_risk_times - 1], risk_times[n_risk_times - 1] ]
@@ -524,8 +529,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
           [ tclear_checks[0], tclear_checks[n_tclear - 1] ]
         ],
         type : 'surface',
-        opacity : 0.5,
-        color : 'rgb(23, 190, 207)', //'#FFB6C1'
+        opacity : 0.75,
       });
     } else {
       // risk.map((b) => 1 / (1 - Math.log(b))).forEach((r, i) => {
@@ -559,6 +563,12 @@ document.addEventListener("DOMContentLoaded", function(event) {
       //   showline : false,
       //   // range : [ 0, 1 ]
       // },
+      aspectmode : "manual",
+      aspectratio : {
+        x : 2,
+        y : 0.5,
+        z : 1,
+      },
       camera : {eye : {x : -1.25, y : -1.25, z : 0.125}},
       scene : {
         xaxis : {title : 'time (s)'},

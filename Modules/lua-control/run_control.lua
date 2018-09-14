@@ -298,16 +298,13 @@ local function parse_risk(msg)
       if risk < risk_nogo then break end
     end
     --
-    --print("t_clear of ", t_clear, my_path.length, my_path.length / t_clear)
     if risk > risk_nogo then
       max_t_clear = 0
       min_vel_clear = math.huge
+    else
+      max_t_clear = t_clear
+      min_vel_clear = my_path.length / t_clear
     end
-    max_t_clear = t_clear
-    min_vel_clear = my_path.length / t_clear
-if msg.go then
-    print("tc and vtc", max_t_clear, min_vel_clear)
-end
   end
 end
 
