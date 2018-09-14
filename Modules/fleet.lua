@@ -14,7 +14,7 @@ if (not name0) or name0=='tri1' then
   table.insert(names, 'tri1')
 end
 for i, name in ipairs(names) do
-  local is_inner = i%2==0
+  local is_inner = name:match"^car%d+" and i%2==0
   local is_obs = name==obs_name
   local log_flag = is_obs and "" or "--log 0"
   local cmds = {
@@ -40,15 +40,15 @@ for i, name in ipairs(names) do
     table.insert(cmds, "tmux new-window -t icra -n joystick")
     table.insert(cmds, "tmux send-keys -t icra:joystick 'cd luajit-racecar' Enter")
     table.insert(cmds, "tmux send-keys -t icra:joystick 'luajit run_joystick.lua "..log_flag.."' Enter")
-    table.insert(cmds, "tmux new-window -t icra -n camera0")
-    table.insert(cmds, "tmux send-keys -t icra:camera0 'cd luajit-racecar' Enter")
-    table.insert(cmds, "tmux send-keys -t icra:camera0 'luajit log_camera.lua --uvc /dev/video0 "..log_flag.."'")
     table.insert(cmds, "tmux new-window -t icra -n camera1")
     table.insert(cmds, "tmux send-keys -t icra:camera1 'cd luajit-racecar' Enter")
     table.insert(cmds, "tmux send-keys -t icra:camera1 'luajit log_camera.lua --uvc /dev/video1 "..log_flag.."'")
     table.insert(cmds, "tmux new-window -t icra -n camera2")
     table.insert(cmds, "tmux send-keys -t icra:camera2 'cd luajit-racecar' Enter")
     table.insert(cmds, "tmux send-keys -t icra:camera2 'luajit log_camera.lua --uvc /dev/video2 "..log_flag.."'")
+    table.insert(cmds, "tmux new-window -t icra -n camera3")
+    table.insert(cmds, "tmux send-keys -t icra:camera3 'cd luajit-racecar' Enter")
+    table.insert(cmds, "tmux send-keys -t icra:camera3 'luajit log_camera.lua --uvc /dev/video3 "..log_flag.."'")
     table.insert(cmds, "tmux new-window -t icra -n risk")
   else
     local path = is_inner and "lane_inner" or "lane_outer"

@@ -265,7 +265,7 @@ local function parse_vicon(msg)
     local vel = math.min((min_vel_clear or 0.5), vel_max)
     result.rpm = vel * racecar.RPM_PER_MPS
   end
-  print('result.rpm', result.rpm)
+  -- print('result.rpm', result.rpm)
 
   -- Keep track of our state
   result.current_state = fsm_control.current_state
