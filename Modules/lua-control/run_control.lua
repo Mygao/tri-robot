@@ -17,10 +17,12 @@ local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
             and assert(logger.new('control', racecar.HOME.."/logs"))
 
+local entered_intersection, min_lane_dist, obs_lane_dist
 local lookahead = 0.6
 local wheel_base = 0.3
 local ok_to_go = true
 local ignore_risk = false
+local risk_nogo = 0.03
 
 local cofsm = require'cofsm'
 local fsm_control = cofsm.new{
@@ -57,11 +59,12 @@ waypoints.turn_right = {
 local paths = {}
 local ds = 0.05
 for k, wps in pairs(waypoints) do
-  local path = control.gen_path(wps, ds)
+  local path, length = control.gen_path(wps, ds)
   local tree = kdtree.create(2)
   for i, p in ipairs(path) do tree:insert(p, i) end
   paths[k] = path
   paths[k].tree = tree
+  paths[k].length = length
 end
 
 ----------------------
@@ -234,20 +237,23 @@ local function parse_vicon(msg)
   if fsm_control.current_state == 'botStop' then
     -- result.duty = 0
     result.rpm = 0
-  else
+  elseif desired_path=='lane_outer' or desired_path=='lane_outer' then
     local d_stop = 0.8
     local d_near = 1.5
     local ratio = (lead_offset - d_stop) / (d_near - d_stop)
     ratio = max(0, min(ratio, 1))
-    if desired_path~='lane_outer' and desired_path~='lane_outer' then
-      ratio = ok_to_go and ratio or 0
-    end
-    -- result.duty = ratio * result.duty
     result.rpm = ratio * result.rpm
     if lead_offset < d_near then
       print(string.format("Stopping for %s | [%.2f -> %.2f]",
                           lead_vehicle, ratio, result.rpm or result.duty))
     end
+  elseif not entered_intersection then
+    local ratio = (min_lane_dist - 0.3) / (1.0 - 0.3)
+    ratio = max(0, min(ratio, 1))
+    result.rpm = ok_to_go and ratio * result.rpm or 0
+  elseif entered_intersection then
+    -- TODO: Check t_clear
+    -- result.duty = ratio * result.duty
   end
 
   -- Keep track of our state
@@ -266,8 +272,23 @@ local function parse_risk(msg)
       ok_to_go = true
     elseif desired_path~='lane_outer' and desired_path~='lane_inner' then
       print("OK to go?", ok_to_go)
-      --fsm_control:dispatch(ok_to_go and "go" or "stop")
     end
+  end
+  if type(msg.entered)=='table' then
+    entered_intersection, min_lane_dist, obs_lane_dist = unpack(msg.entered)
+    print(entered_intersection, min_lane_dist, obs_lane_dist)
+  end
+  -- Use t_clear checking
+  if type(msg.tclear_checks)=='table' and type(msg.risk_checks)=='table' then
+    local t_clear, risk
+    for i=#msg.tclear_checks,1,-1 do
+      t_clear = msg.tclear_checks[i]
+      local risks = msg.risk_checks[i]
+      risk = risks[#risks]
+      if risk < risk_nogo then break end
+    end
+    --
+    print("t_clear of ", t_clear, my_path.length, my_path.length / t_clear)
   end
 end
 

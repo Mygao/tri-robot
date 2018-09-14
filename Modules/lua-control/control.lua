@@ -13,12 +13,13 @@ local vector = require'vector'
 local function gen_path(waypoints, ds)
   ds = tonumber(ds) or 0.05
   -- Two dimensional points
-  local path = {}
+  local path, length = {}, 0
   for i=1, #waypoints-1 do
     local p_a = vector.new(waypoints[i])
     local p_b = vector.new(waypoints[i+1])
     local dp = p_b - p_a
     local d = vector.norm(dp)
+    length = length + d
     dp = vector.unit(dp)
     tinsert(path, p_a)
     for step = ds, d-ds, ds do
@@ -26,14 +27,13 @@ local function gen_path(waypoints, ds)
       tinsert(path, p)
     end
   end
-  return path
+  return path, length
 end
 lib.gen_path = gen_path
 
 -- Usage: c
 -- L is lookahead distance
 -- threshold_close is how far away from the path before we give up
--- TODO: Make lookahead a function - shuld use the curvature of the car, currently
 local function pure_pursuit(params)
   -- Initialization bits
   params = type(params)=='table' and params or {}
