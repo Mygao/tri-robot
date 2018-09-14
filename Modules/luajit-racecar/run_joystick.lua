@@ -19,17 +19,19 @@ local fd_js = assert(js.open(flags.js or "/dev/input/js0", true))
 
 -- Read to find data
 local function update_read(e)
+--[[
   if e~=1 then
     print("Reading", e)
     js.close()
     fd_js = false
     return os.exit()
   end
+--]]
   local axes = js.axis()
-  print('Axes', unpack(axes))
+--  print('Axes', unpack(axes))
   --
   local buttons = js.button()
-  print('Buttons', unpack(buttons))
+--  print('Buttons', unpack(buttons))
   return axes, buttons
 end
 
@@ -50,17 +52,18 @@ local function cb_loop(t_us)
   log_announce(log, {axes=axes, buttons=buttons}, 'joystick')
 end
 
+
+
 -- Listen at 100Hz
--- local cb_tbl = {
---   control = cb_control
--- }
+local cb_tbl = {
+  houston = function() end
+}
 -- local fd_updates = {
 --   [fd_vesc] = update_read
 -- }
 racecar.listen{
   channel_callbacks = cb_tbl,
-  fd_updates = fd_updates,
+  -- fd_updates = fd_updates,
   loop_rate = 50, -- 20Hz input
   loop_fn = cb_loop
 }
-

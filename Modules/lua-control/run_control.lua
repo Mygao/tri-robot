@@ -325,7 +325,7 @@ local function parse_joystick(msg)
   if type(msg.buttons)~='table' or type(msg.axes)~='table' then
     return
   end
-  vel_h = vel_max * msg.axes[1] / 32767
+  vel_h = vel_max * msg.axes[2] / 32767
 end
 
 local cb_tbl = {
