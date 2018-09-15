@@ -264,7 +264,9 @@ local function parse_vicon(msg)
     if not ok_to_go then vel_v = 0.1 end
   elseif entered_intersection then
     -- TODO: Check t_clear
-    if min_vel_clear then
+    if max_t_clear then
+      min_vel_clear = paths.turn_left..length / max_t_clear
+      print("min_vel_clear", min_vel_clear)
       vel_v = math.max(vel_v, min_vel_clear)
     end
     vel_v = math.min(vel_v, vel_max)
@@ -291,9 +293,8 @@ local function parse_risk(msg)
       print("OK to go?", ok_to_go)
     end
   end
-  if type(msg.max_t_clear)=='number' then
-    max_t_clear = msg.max_t_clear
-  end
+  max_t_clear = msg.max_t_clear
+  entered_intersection = msg.entered_intersection
 end
 
 local function parse_houston(msg)
