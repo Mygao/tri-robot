@@ -245,9 +245,11 @@ local function parse_vicon(msg)
   local vel_v = vel_h or vel_l
 
   if fsm_control.current_state == 'botStop' then
+    print("stopped")
     -- result.duty = 0
     vel_v = 0
   elseif desired_path=='lane_outer' or desired_path=='lane_inner' then
+    print("in path")
     local d_stop = 0.8
     local d_near = 1.5
     local ratio = (lead_offset - d_stop) / (d_near - d_stop)
@@ -258,21 +260,25 @@ local function parse_vicon(msg)
     --                       lead_vehicle, ratio, result.rpm or result.duty))
     -- end
   elseif entered_intersection==false or straight_start then
-    result.rpm = 0.25 * racecar.RPM_PER_MPS
-    local ratio = (d_j or 1.6) / 1.6
+    local ratio = math.abs(d_j or 1.6) / 1.6
     vel_v = vel_v * max(0, min(ratio, 1))
-    if not ok_to_go then vel_v = 0.1 end
+    if vel_v < 0.25 and vel_v>=0 then
+	vel_v = 0.25 
+    elseif vel_v > -0.25 and vel_v <= 0 then
+    vel_v = -0.25 end
+    if not ok_to_go and math.abs(d_j) < 0.05 then vel_v = math.min(0, vel_v) end
+    print("Not entered", d_j, ok_to_go, vel_v)
   elseif entered_intersection then
     -- TODO: Check t_clear
     if max_t_clear then
       min_vel_clear = paths.turn_left.length / max_t_clear
-      print("min_vel_clear", min_vel_clear)
       vel_v = math.max(vel_v, min_vel_clear)
     end
-    vel_v = math.min(vel_v, vel_max)
+    print("min_vel_clear", min_vel_clear)
   end
   -- print('result.rpm', result.rpm)
-
+  vel_v = math.max(-vel_max, math.min(vel_v, vel_max))
+  print("vel_v", vel_v)
   result.rpm = vel_v * racecar.RPM_PER_MPS
 
   -- Keep track of our state
