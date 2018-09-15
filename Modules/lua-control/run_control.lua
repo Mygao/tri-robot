@@ -294,7 +294,8 @@ local function parse_risk(msg)
     end
   end
   max_t_clear = msg.max_t_clear
-  entered_intersection = msg.entered_intersection
+  d_j = msg.d_j
+  entered_intersection = msg.d_j > 0
 end
 
 local function parse_houston(msg)
