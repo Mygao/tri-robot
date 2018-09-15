@@ -19,3 +19,6 @@ test ! $RMEM_DEFAULT -eq $RMEM_DEFAULT_LCM && sudo sysctl -w net.core.rmem_defau
 # sudo route add -net 224.0.0.0 netmask 240.0.0.0 dev eth1
 
 # sudo apt-get install tmux nano htop libusb-1.0-0-dev
+
+
+sudo rmmod uvcvideo && sudo modprobe uvcvideo quirks=128

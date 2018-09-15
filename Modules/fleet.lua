@@ -1,7 +1,7 @@
 #!/usr/bin/env luajit
 
 local name0 = arg[1]
-local obs_name = 'tri1'
+local obs_name = 'car1'
 
 local names = {}
 for i=1,7 do
@@ -10,10 +10,11 @@ for i=1,7 do
     table.insert(names, name)
   end
 end
--- if (not name0) or name0=='tri1' then
---   table.insert(names, 'tri1')
--- end
+if (not name0) or name0=='tri1' then
+  table.insert(names, 'tri1')
+end
 for i, name in ipairs(names) do
+  if name ~='car1' then
   local is_inner = name:match"^car%d+" and i%2==0
   local is_obs = name==obs_name
   local log_flag = is_obs and "" or "--log 0"
@@ -66,5 +67,6 @@ for i, name in ipairs(names) do
   local ssh_cmd = string.format('ssh -C -t nvidia@%s.local "%s"', name, cmds_str)
   print(ssh_cmd)
   -- os.execute(ssh_cmd)
+end
 end
 
