@@ -24,7 +24,7 @@ local ok_to_go = true
 local ignore_risk = false
 local risk_nogo = 0.03
 local vel_h = false
-local vel_max = 1.5
+local vel_max = 1
 
 local cofsm = require'cofsm'
 local fsm_control = cofsm.new{
