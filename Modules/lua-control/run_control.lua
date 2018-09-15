@@ -271,6 +271,7 @@ local function parse_vicon(msg)
     end
     if not ok_to_go and math.abs(d_j) < 0.05 then vel_v = math.min(0, vel_v) end
     print("Not entered", d_j, ok_to_go, vel_v)
+    print("vel_v", vel_v)
   elseif entered_intersection then
     -- TODO: Check t_clear
     if max_t_clear then
@@ -278,10 +279,10 @@ local function parse_vicon(msg)
       vel_v = math.max(vel_v, min_vel_clear)
     end
     print("min_vel_clear", min_vel_clear)
+    print("vel_v", vel_v)
   end
   -- print('result.rpm', result.rpm)
   vel_v = math.max(-vel_max, math.min(vel_v, vel_max))
-  print("vel_v", vel_v)
   result.rpm = vel_v * racecar.RPM_PER_MPS
 
   -- Keep track of our state
@@ -304,6 +305,7 @@ local function parse_risk(msg)
   end
   max_t_clear = msg.max_t_clear
   d_j = msg.d_j
+  gap = msg.gap
   entered_intersection = msg.d_j > 0
 end
 
