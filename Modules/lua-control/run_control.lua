@@ -25,6 +25,7 @@ local ignore_risk = false
 local risk_nogo = 0.03
 local vel_h = false
 local vel_max = 1
+local vel_l = 0.5
 
 local cofsm = require'cofsm'
 local fsm_control = cofsm.new{
@@ -240,7 +241,8 @@ local function parse_vicon(msg)
   -- For sending to the vesc
   result.steering = steering
   -- result.duty = 6
-  result.rpm = 0.5 * racecar.RPM_PER_MPS
+
+  local vel_v = vel_h or vel_l
 
   if fsm_control.current_state == 'botStop' then
     -- result.duty = 0
@@ -250,29 +252,29 @@ local function parse_vicon(msg)
     local d_near = 1.5
     local ratio = (lead_offset - d_stop) / (d_near - d_stop)
     ratio = max(0, min(ratio, 1))
-    result.rpm = ratio * result.rpm
-    if lead_offset < d_near then
-      print(string.format("Stopping for %s | [%.2f -> %.2f]",
-                          lead_vehicle, ratio, result.rpm or result.duty))
-    end
+    vel_v = ratio * vel_v
+    -- if lead_offset < d_near then
+    --   print(string.format("Stopping for %s | [%.2f -> %.2f]",
+    --                       lead_vehicle, ratio, result.rpm or result.duty))
+    -- end
   elseif entered_intersection==false or straight_start then
     result.rpm = 0.25 * racecar.RPM_PER_MPS
     local ratio = (min_lane_dist - 0.6) / (1.6 - 0.6)
-    ratio = max(0, min(ratio, 1))
-    result.rpm = ok_to_go and ratio * result.rpm or 0
+    vel_v = vel_v * max(0, min(ratio, 1))
+    if not ok_to_go then vel_v = 0.1 end
   elseif entered_intersection then
     -- TODO: Check t_clear
-    local vel = math.min((min_vel_clear or 0.5), vel_max)
-    result.rpm = vel * racecar.RPM_PER_MPS
+    if min_vel_clear then
+      vel_v = math.max(vel_v, min_vel_clear)
+    end
+    vel_v = math.min(vel_v, vel_max)
   end
   -- print('result.rpm', result.rpm)
 
+  result.rpm = vel_v * racecar.RPM_PER_MPS
+
   -- Keep track of our state
   result.current_state = fsm_control.current_state
-
-  if vel_h then
-    result.rpm = vel_h * racecar.RPM_PER_MPS
-  end
 
   log_announce(log, result, "control")
   -- For GUI plotting
