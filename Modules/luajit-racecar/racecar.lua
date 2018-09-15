@@ -125,7 +125,7 @@ local function announce(channel, str, cnt, t_us)
   if type(str)~='string' then
     return false, "Bad serialize"
   end
-  cnt = tonumber(cnt) or 0
+  cnt = tonumber(cnt) or jitter_counts[channel] or 0
   local msg = fragment(channel, str, cnt)
   local ret, err = skt_mcl:send_all(msg)
   if not ret then return false, err end

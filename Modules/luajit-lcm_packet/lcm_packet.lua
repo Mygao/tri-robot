@@ -204,7 +204,18 @@ local function assemble3(buf, buf_len, from_addr)
   if buf_pos < buf_len then
     ffi.copy(fbuf.buf + fragment_offset, buf + buf_pos, buf_len - buf_pos)
   end
+--[[
+luajit: ...a/dev/tri-robot/Modules/luajit-lcm_packet/lcm_packet.lua:211: attempt to perform arithmetic on field 'fragments_remaining' (a nil value)
+stack traceback:
+        ...a/dev/tri-robot/Modules/luajit-lcm_packet/lcm_packet.lua:211: in function 'assemble'
+        /home/nvidia/dev/tri-robot/Modules/luajit-lcm/lcm.lua:48: in function 'lcm_receive'
+        /home/nvidia/dev/tri-robot/Modules/luajit-lcm/lcm.lua:118: in function </home/nvidia/dev/tri-robot/Modules/luajit-lcm/lcm.lua:118>
+        /home/nvidia/dev/tri-robot/Modules/luajit-lcm/lcm.lua:77: in function 'update'
+        .../nvidia/dev/tri-robot/Modules/luajit-racecar/racecar.lua:299: in function 'listen'
+        ./run_joystick.lua:64: in main chunk
+        [C]: at 0x00404e30
 
+]]
   -- Accounting update in case we have not seen this fragment before
   if not fbuf.frag_received[fragment_id+1] then
     fbuf.frag_received[fragment_id+1] = true
@@ -240,7 +251,12 @@ function lib.assemble(buffer, buf_len, msgid)
   if buf_len < 4 then return false, "Header too small" end
   local buf = ffi.cast('uint8_t*', buffer)
   local magic = decode_u32(buf)
-  return (magic==MAGIC_LCM2 and assemble2 or assemble3)(buf, buf_len, msgid)
+  if magic==MAGIC_LCM2 then
+    return assemble2(buf, buf_len, msgid)
+  -- Found a bug
+  -- else
+  --   return assemble3(buf, buf_len, msgid)
+  end
 end
 
 function lib.get_nfragments(buffer, buf_len)

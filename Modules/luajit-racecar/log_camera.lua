@@ -11,15 +11,13 @@ local jitter_tbl = racecar.jitter_tbl
 
 -- local width, height = 1344, 376
 local width, height = 320, 240
-local fmt = 'mjpeg'
+local fmt = flags.fmt or 'yuyv'
 local camera = assert(uvc.init(devname, width, height, fmt, 1, 10))
 
 local c_jpeg
 if fmt=='yuyv' then
-  camera = assert(require'uvc'.init(
-  devname, width, height, fmt, 1, 10))
   local jpeg = require'jpeg'
-  c_jpeg = jpeg.compressor('yuyv')
+  c_jpeg = jpeg.compressor'yuyv'
   c_jpeg:downsampling(1)
 elseif fmt == 'mjpeg' then
   c_jpeg = nil
@@ -42,7 +40,7 @@ racecar.handle_shutdown(exit)
 local t_debug = time()
 local n = 0
 while racecar.running do
-  local img, sz = camera:get_image(-1)
+  local img, sz = camera:get_image(-1, not c_jpeg)
   local t = time()
   if img then
     local img_jpg = nil

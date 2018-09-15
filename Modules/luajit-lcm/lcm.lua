@@ -40,12 +40,13 @@ end
 
 local function lcm_receive(self)
   local str, address, port = self.skt:recv()
-  if not str then
+  if type(str)~='string' then
     -- Should always receive data
     return false, "No data"
   end
   local id = port and packet.gen_id(address, port)
   local channel, data = packet.assemble(str, #str, id)
+  if not channel then return false, "Bad assemble" end
   -- Run the callback
   local fn = self.callbacks[channel]
   if fn and type(data)=='string' then

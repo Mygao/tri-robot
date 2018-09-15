@@ -362,7 +362,8 @@ int v4l2_set_ctrl(v4l2_device *vdev, const char *name, int value) {
   return ret;
 }
 
-int v4l2_read_frame(v4l2_device *vdev, struct v4l2_buffer *buf) {
+int v4l2_read_frame(v4l2_device *vdev) {
+  struct v4l2_buffer buf;
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
   if (xioctl(vdev->fd, VIDIOC_DQBUF, &buf) == -1) {
@@ -385,6 +386,6 @@ int v4l2_read_frame(v4l2_device *vdev, struct v4l2_buffer *buf) {
   }
   int index = buf.index;
   // In case of MJPEG data
-  vdev->buf_used = buf[index].bytesused;
+  vdev->buf_used[index] = buf.bytesused;
   return index;
 }
