@@ -245,7 +245,7 @@ local function parse_vicon(msg)
   local vel_v = vel_h or vel_l
 
   if fsm_control.current_state == 'botStop' then
-    print("stopped")
+    -- print("stopped")
     -- result.duty = 0
     vel_v = 0
   elseif desired_path=='lane_outer' or desired_path=='lane_inner' then
@@ -260,12 +260,15 @@ local function parse_vicon(msg)
     --                       lead_vehicle, ratio, result.rpm or result.duty))
     -- end
   elseif entered_intersection==false or straight_start then
-    local ratio = math.abs(d_j or 1.6) / 1.6
-    vel_v = vel_v * max(0, min(ratio, 1))
-    if vel_v < 0.25 and vel_v>=0 then
-	vel_v = 0.25 
-    elseif vel_v > -0.25 and vel_v <= 0 then
-    vel_v = -0.25 end
+    if math.abs(vel_v) >= 0.25 then
+      local ratio = math.abs(d_j or 1.6) / 1.6
+      vel_v = vel_v * max(0, min(ratio, 1))
+      if vel_v < 0.25 and vel_v>=0 then
+        vel_v = 0.25 
+      elseif vel_v > -0.25 and vel_v <= 0 then
+        vel_v = -0.25
+      end
+    end
     if not ok_to_go and math.abs(d_j) < 0.05 then vel_v = math.min(0, vel_v) end
     print("Not entered", d_j, ok_to_go, vel_v)
   elseif entered_intersection then
