@@ -259,13 +259,13 @@ local function parse_vicon(msg)
     -- end
   elseif entered_intersection==false or straight_start then
     result.rpm = 0.25 * racecar.RPM_PER_MPS
-    local ratio = (min_lane_dist - 0.6) / (1.6 - 0.6)
+    local ratio = (d_j or 1.6) / 1.6
     vel_v = vel_v * max(0, min(ratio, 1))
     if not ok_to_go then vel_v = 0.1 end
   elseif entered_intersection then
     -- TODO: Check t_clear
     if max_t_clear then
-      min_vel_clear = paths.turn_left..length / max_t_clear
+      min_vel_clear = paths.turn_left.length / max_t_clear
       print("min_vel_clear", min_vel_clear)
       vel_v = math.max(vel_v, min_vel_clear)
     end
