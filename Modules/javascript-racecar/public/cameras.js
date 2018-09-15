@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
   const draw = (timestamp) => {
     window.requestAnimationFrame(draw);
     const t = Date.now();
-    const video1 = cur.video1;
+    const video1 = cur.video1 || cur.video0;
     if (video1) {
       cur.video1 = false;
       const blobJ = new Blob([ video1.jpg ], {'type' : 'image/jpeg'});
