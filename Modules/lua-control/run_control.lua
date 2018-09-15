@@ -24,7 +24,7 @@ local ok_to_go = true
 local ignore_risk = false
 local risk_nogo = 0.03
 local vel_h = false
-local vel_max = 1
+local vel_max = 0.75
 local vel_l = 0.5
 
 local cofsm = require'cofsm'
@@ -246,7 +246,7 @@ local function parse_vicon(msg)
 
   if fsm_control.current_state == 'botStop' then
     -- result.duty = 0
-    result.rpm = 0
+    vel_v = 0
   elseif desired_path=='lane_outer' or desired_path=='lane_inner' then
     local d_stop = 0.8
     local d_near = 1.5
@@ -291,27 +291,8 @@ local function parse_risk(msg)
       print("OK to go?", ok_to_go)
     end
   end
-  if type(msg.entered)=='table' then
-    entered_intersection, min_lane_dist, obs_lane_dist = unpack(msg.entered)
-    --print(entered_intersection, min_lane_dist, obs_lane_dist)
-  end
-  -- Use t_clear checking
-  if type(msg.tclear_checks)=='table' and type(msg.risk_checks)=='table' then
-    local t_clear, risk
-    for i=#msg.tclear_checks,1,-1 do
-      t_clear = msg.tclear_checks[i]
-      local risks = msg.risk_checks[i]
-      risk = risks[#risks]
-      if risk < risk_nogo then break end
-    end
-    --
-    if risk > risk_nogo then
-      max_t_clear = 0
-      min_vel_clear = math.huge
-    else
-      max_t_clear = t_clear
-      min_vel_clear = my_path.length / t_clear
-    end
+  if type(msg.max_t_clear)=='number' then
+    max_t_clear = msg.max_t_clear
   end
 end
 
