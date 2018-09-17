@@ -64,6 +64,7 @@ if ffi.os=='OSX' then
   SO_TIMESTAMP = 0x400 -- 4 bytes
 end
 
+local UDP_HEADER_SZ = 20
 local BATCH_SZ = 8
 local MAX_LENGTH = 65535 -- Jumbo UDP packet
 local SKT_BUFFER_SZ = math.pow(2, 20)

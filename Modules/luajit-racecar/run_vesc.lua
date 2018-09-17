@@ -71,9 +71,7 @@ local function update_read(e)
     return false, "Weird read: "..type(data)
   end
   local status, obj, msg = coresume(coro_vesc, data)
-  local got_pkt = false
   while status and obj do
-    got_packet = true
     log_announce(log, obj, 'vesc')
     status, obj, msg = coresume(coro_vesc)
   end
