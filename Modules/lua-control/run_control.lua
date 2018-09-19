@@ -404,7 +404,7 @@ end
     result = update_steering(pose_rbt)
     -- Make sure we go fast enough to move...
     if risk.d_j then
-      print("risk", risk.d_j, risk.go)
+      print("go", risk.go, "d_j", risk.d_j, "vel_v", vel_v)
       if math.abs(vel_v) >= vel_min then
         local ratio = math.abs(risk.d_j) / 1.6
         vel_v = vel_v * max(0, min(ratio, 1))
@@ -415,11 +415,11 @@ end
         end
       end
       -- Only going backwards if no go
-      if not risk.go and math.abs(risk.d_j) < 0.05 then
+      if not risk.go and math.abs(risk.d_j) < 0.11 then
         vel_v = math.min(0, vel_v)
       end
     end
-    print("botApproach velocity", vel_v, risk.d_j)
+    print("botApproach velocity", vel_v)
   elseif my_state == 'botTurn' then
     local pose_rbt = poses[id_rbt]
     result = update_steering(pose_rbt)

@@ -14,7 +14,7 @@ if (not name0) or name0=='tri1' then
   table.insert(names, 'tri1')
 end
 for i, name in ipairs(names) do
-  if name ~='car1' or true then
+  if name ~='car1' then
   local is_inner = name:match"^car%d+" and i%2==0
   local is_obs = name==obs_name
   local log_flag = is_obs and "" or "--log 0"
