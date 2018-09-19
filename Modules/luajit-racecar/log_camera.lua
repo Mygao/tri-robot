@@ -6,6 +6,7 @@ local uvc = require'uvc'
 
 local time = require'unix'.time
 local racecar = require'racecar'
+racecar.init()
 local log_announce = racecar.log_announce
 local jitter_tbl = racecar.jitter_tbl
 
@@ -27,8 +28,7 @@ end
 
 local channel = devname:match("([^/]+%d+)") or 'camera'
 local logger = require'logger'
-local log_dir = racecar.HOME.."/logs"
-local log = flags.log~=0 and assert(logger.new(channel, log_dir))
+local log = flags.log~=0 and assert(logger.new(channel, racecar.ROBOT_HOME.."/logs"))
 
 local function exit()
   if log then log:close() end

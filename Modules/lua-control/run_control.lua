@@ -51,7 +51,7 @@ waypoints.lane_enter = {
   {-2.5, 1.5}, {-1.25, 1.5}
 }
 waypoints.turn_left = {
-  {-1.5, 1.5}, {-0.8, 1.5}, {-0.7705948579011315, 1.5014445819983409}, {-0.7414729033951611, 1.5057644158790309}, {-0.712914596823661, 1.5129178992803374}, {-0.6851949702904727, 1.5228361402466142}, {-0.6585809789522005, 1.5354236206954937}, {-0.6333289300941191, 1.5505591163092367}, {-0.6096820147509061, 1.5680968639911792}, {-0.5878679656440355, 1.587867965644036}, {-0.5680968639911788, 1.6096820147509066}, {-0.5505591163092364, 1.6333289300941196}, {-0.5354236206954934, 1.6585809789522008}, {-0.522836140246614, 1.6851949702904732}, {-0.5129178992803374, 1.7129145968236614}, {-0.5057644158790309, 1.7414729033951617}, {-0.5014445819983409, 1.770594857901132}, {-0.5, 1.8},
+  {-1.5, 1.5}, {-0.8, 1.5}, {-0.7705948579011315, 1.5014445819983409}, {-0.7414729033951611, 1.5057644158790309}, {-0.712914596823661, 1.5129178992803374}, {-0.6851949702904727, 1.5228361402466142}, {-0.6585809789522005, 1.5354236206954937}, {-0.6333289300941191, 1.5505591163092367}, {-0.6096820147509061, 1.5680968639911792}, {-0.5878679656440355, 1.587867965644036}, {-0.5680968639911788, 1.6096820147509066}, {-0.5505591163092364, 1.6333289300941196}, {-0.5354236206954934, 1.6585809789522008}, {-0.522836140246614, 1.6851949702904732}, {-0.5129178992803374, 1.7129145968236614}, {-0.5057644158790309, 1.7414729033951617}, {-0.5014445819983409, 1.770594857901132}, {-0.5, 1.8}, {-0.5, 3}
 }
 waypoints.turn_right = {
   {-1.5, 1.5}, {-1.5205948579011328, 1.4985554180016591}, {-1.4914729033951626, 1.4942355841209694}, {-1.4629145968236625, 1.4870821007196628}, {-1.4351949702904743, 1.4771638597533865}, {-1.408580978952202, 1.464576379304507}, {-1.3833289300941205, 1.4494408836907644}, {-1.3596820147509077, 1.4319031360088221}, {-1.3378679656440369, 1.4121320343559653}, {-1.31809686399118, 1.390317985249095}, {-1.3005591163092374, 1.3666710699058822}, {-1.2854236206954943, 1.341419021047801}, {-1.2728361402466148, 1.3148050297095288}, {-1.262917899280338, 1.2870854031763408}, {-1.2557644158790313, 1.2585270966048407}, {-1.251444581998341, 1.2294051420988705}, {-1.25, 1.2},
@@ -156,29 +156,27 @@ local function find_lane(p_vehicle, closeness)
   end
 end
 
-local function update_steering(pose_rbt)
-  local running, result, err = coresume(co_control, pose_rbt)
-  if not running then
-    print("Not running", result)
-    log_announce(log, { steering = 0, rpm = 0 }, "control")
-    return os.exit()
-  elseif type(result)~='table' then
-    print("Improper", result, err)
-    log_announce(log, { steering = 0, rpm = 0 }, "control")
-    return
-  elseif result.err then
-    print("Error", result.err)
-    log_announce(log, { steering = 0, rpm = 0 }, "control")
-    return
-  elseif result.done then
-    fsm_control:dispatch"done"
-    return
-  end
+local cofsm = require'cofsm'
+local fsm_control = cofsm.new{
+  -- Go is a sink, that goes to the next state
+  -- Should find lane, etc.
+  {'botStop', 'go', 'botGo'},
+  -- Stop is a sink
+  {'botGo', 'stop', 'botStop'},
+  -- Follow the lane loop
+  {'botFollowLane', 'stop', 'botStop'},
+  {'botFollowLane', 'done', 'botFollowLane'},
+  {'botGo', 'lane', 'botFollowLane'},
+  -- Turn at the intersection
+  {'botTurn', 'stop', 'botStop'},
+  {'botTurn', 'done', 'botGo'}, -- botGo will find a lane
+  {'botGo', 'turn', 'botTurn'},
+  -- Approach the intersection
+  {'botApproach', 'stop', 'botStop'},
+  {'botApproach', 'done', 'botTurn'},
+  {'botGo', 'approach', 'botApproach'},
+}
 
-  local steering = math.atan(result.kappa * wheel_base)
-  result.steering = steering
-  return result
-end
 
 -- Need be an exit function only, really
 local function get_turn_path(stateA, stateB, event)
@@ -198,27 +196,36 @@ local function loop_path()
                         id_start=1
                         })
 end
+local function update_steering(pose_rbt)
+  local running, result, err = coresume(co_control, pose_rbt)
+  if not running then
+    print("Not running", result)
+    log_announce(log, { steering = 0, rpm = 0 }, "control")
+    return os.exit()
+  elseif type(result)~='table' then
+    print("Improper", result, err)
+    log_announce(log, { steering = 0, rpm = 0 }, "control")
+    return
+  elseif result.err then
+    print("Error", result.err)
+    log_announce(log, { steering = 0, rpm = 0 }, "control")
+    return
+  elseif result.done then
+    print('DONE!', fsm_control.current_state)
+    if fsm_control.current_state=='botApproach' then
+      get_turn_path()
+    else
+      loop_path()
+    end
+    fsm_control:dispatch"done"
+    return
+  end
 
-local cofsm = require'cofsm'
-local fsm_control = cofsm.new{
-  -- Go is a sink, that goes to the next state
-  -- Should find lane, etc.
-  {'botStop', 'go', 'botGo'},
-  -- Stop is a sink
-  {'botGo', 'stop', 'botStop'},
-  -- Follow the lane loop
-  {'botFollowLane', 'stop', 'botStop'},
-  {'botFollowLane', 'done', 'botFollowLane', loop_path},
-  {'botGo', 'lane', 'botFollowLane'},
-  -- Turn at the intersection
-  {'botTurn', 'stop', 'botStop'},
-  {'botTurn', 'done', 'botGo'}, -- botGo will find a lane
-  {'botGo', 'turn', 'botTurn'},
-  -- Approach the intersection
-  {'botApproach', 'stop', 'botStop'},
-  {'botApproach', 'done', 'botTurn', get_turn_path},
-  {'botGo', 'approach', 'botApproach'},
-}
+  local steering = math.atan(result.kappa * wheel_base)
+  result.steering = steering
+  return result
+end
+
 
 local function vicon2pose(vp)
   return vp.translation[1] / 1e3, vp.translation[2] / 1e3, vp.rotation[3]
@@ -266,7 +273,9 @@ local function parse_joystick(msg)
     return
   end
   -- Set the human velocity
-  vel_h = vel_max * msg.axes[2] / -32767
+  if msg.axes[2] then
+    vel_h = vel_max * msg.axes[2] / -32767
+  end
 end
 
 local cb_tbl = {
@@ -280,12 +289,15 @@ local cb_tbl = {
 local function update_lead(my_id)
   my_id = my_id or id_rbt
 
-  for id, p in pairs(poses) do lanes[id] = find_lane(p) end
+  for id, p in pairs(poses) do
+    lanes[id] = find_lane(p)
+  end
   local my_lane = lanes[my_id]
   if not my_lane then return false, "Not in a lane" end
 
   local lead_offset, id_lead = math.huge, nil
   for id, lane in pairs(lanes) do
+    print(id, my_id)
     if id~=my_id and lane.name_path==my_lane.name_path then
       local path_offset = (lane.id_path - my_lane.id_path) * lane.ds
       if path_offset > 0 and path_offset < lead_offset then
@@ -333,6 +345,7 @@ local function cb_loop(t_us)
   -- For sending to the vesc
   local result = {}
   local my_state = fsm_control.current_state
+  print("my_state", my_state)
 
   if my_state == 'botStop' then
     vel_v = 0
@@ -343,15 +356,18 @@ local function cb_loop(t_us)
       local info_lane, err = find_lane(pose_rbt)
       if info_lane then
         my_path = paths[info_lane.name_path]
+        print("info_lane.name_path", info_lane.name_path)
         co_control = cocreate(control.pure_pursuit{
                               path=my_path,
                               fn_nearby=fn_nearby,
                               lookahead=lookahead})
         if info_lane.name_path == 'lane_enter' then
-          fsm_control:dispatch"botApproach"
-        elseif info_lane.name_path:match'^lane' then
-          fsm_control:dispatch"botFollowLane"
+          fsm_control:dispatch"approach"
+        elseif info_lane.name_path:match'^lane_' then
+          fsm_control:dispatch"lane"
         end
+      else
+        print('info_lane', err)
       end
     end
   elseif my_state == 'botFollowLane' then
@@ -359,6 +375,7 @@ local function cb_loop(t_us)
     result = update_steering(pose_rbt)
     -- Find a lead vehicle
     local id_lead, lead_offset = update_lead()
+    if id_lead then
     -- Slow for a lead vehicle
     local d_stop = 0.8
     local d_near = 1.5
@@ -369,11 +386,14 @@ local function cb_loop(t_us)
       print(string.format("Stopping for %s | [%.2f -> %.2f]",
                           id_lead, ratio, result.rpm or result.duty))
     end
+else
+print("id_lead", lead_offset)
+end
   elseif my_state == 'botApproach' then
     local pose_rbt = poses[id_rbt]
     result = update_steering(pose_rbt)
     -- Make sure we go fast enough to move...
-    if risk then
+    if risk.d_j then
       print("risk", risk.d_j, risk.go)
       if math.abs(vel_v) >= 0.25 then
         local ratio = math.abs(risk.d_j or 1.6) / 1.6
@@ -406,6 +426,8 @@ local function cb_loop(t_us)
   end
   -- print('result.rpm', result.rpm)
   vel_v = math.max(-vel_max, math.min(vel_v, vel_max))
+
+  result = result or {}
   result.rpm = vel_v * racecar.RPM_PER_MPS
 
   result.state = my_state
