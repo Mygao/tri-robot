@@ -49,7 +49,8 @@ local lib = {
 local jitter_counts, jitter_times = {}, {}
 
 local skt_mcl, skt_lcm, msg_partitioner
-local function init()
+local function init(options)
+  if type(options)~='table' then options = {} end
   -- MCL: localhost with ttl of 0, LCM: subnet with ttl of 1
   if has_lcm then
     local err
@@ -62,7 +63,7 @@ local function init()
         ttl = IS_MAIN and 1 or 0
       }
       if skt_mcl then
-        local mtu = 'localhost'
+        local mtu = options.mtu or 'localhost'
         msg_partitioner = lcm_packet.new_partitioning(mtu)
       else
         io.stderr:write(string.format("MCL not available: %s\n",
@@ -148,7 +149,7 @@ function lib.log_announce(log, obj, channel)
     str, cnt, t_us = log:write(obj, channel)
   end
   local ret, err = announce(channel, str or obj, cnt, t_us)
-  if not str then
+  if log and not str then
     -- Logging error
     return false, cnt
   elseif not ret then
@@ -294,34 +295,39 @@ function lib.listen(options)
     end
   end
   local loop_rate = tonumber(options.loop_rate)
-  local loop_rate1 -- actual to keep steady timing
+  local loop_rate1
   local loop_fn = type(options.loop_fn)=='function' and options.loop_fn
+  local t_update
+  local dt_poll = 4 -- 250Hz
   local t_fn = 0
-  local t_loop = 0
+  local dt_fn
   local t_debug = 0
-  local dt_debug_us = 1e6
+  local debug_rate = 1e3
   local status = true
   local err
   while lib.running do
     local t = time_us()
     if loop_rate then
-      local dt_offset = tonumber(t_loop - t)/1e3
-      loop_rate1 = max(0, loop_rate + dt_offset)
+      dt_fn = tonumber(t - t_fn) / 1e3
+      loop_rate1 = max(1, min(loop_rate - dt_fn, dt_poll))
     else
       loop_rate1 = -1
     end
     status, err = lcm_obj:update(loop_rate1)
-    t_loop = time_us()
-    if not status then lib.running = false end
-    local dt_loop = tonumber(t_loop - t_fn)/1e3
-    if loop_fn and dt_loop >= loop_rate then
-      -- update_jitter("lcm_loop", t_loop)
-      loop_fn(t_loop)
-      t_fn = t_loop
+    t_update = time_us()
+    if not status then lib.running = false; break end
+    dt_fn = tonumber(t_update - t_fn)/1e3
+    if loop_fn and dt_fn >= loop_rate then
+      t_fn = t_update
+      -- update_jitter("lcm_loop", t_fn)
+      loop_fn(t_update)
     end
-    if tonumber(t_loop - t_debug) > dt_debug_us then
-      io.write(tconcat(jitter_tbl(), '\n'), '\n')
-      t_debug = time_us()
+    if tonumber(t_update - t_debug)/1e3 > debug_rate then
+      t_debug = t_update
+      local jt = jitter_tbl()
+      if #jt>0 then
+        io.write(tconcat(jt, '\n'), '\n')
+      end
     end
   end
   return status, err

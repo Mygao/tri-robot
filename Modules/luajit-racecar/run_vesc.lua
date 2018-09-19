@@ -2,6 +2,7 @@
 
 local racecar = require'racecar'
 local flags = racecar.parse_arg(arg)
+racecar.init()
 
 local coresume = require'coroutine'.resume
 local max, min = require'math'.max, require'math'.min
@@ -9,10 +10,11 @@ local schar = require'string'.char
 local unpack = unpack or require'table'.unpack
 
 local has_logger, logger = pcall(require, 'logger')
-local vesc = require'vesc'
 local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
-            and assert(logger.new('vesc', racecar.HOME.."/logs"))
+            and assert(logger.new('vesc', racecar.ROBOT_HOME.."/logs"))
+
+local vesc = require'vesc'
 
 local fd_vesc, read, write, close
 if flags.vesc then
@@ -48,6 +50,7 @@ local function cb_control(obj)
   cmds.servo = steering2servo(tonumber(obj.steering) or 0)
   cmds.duty = tonumber(obj.duty)
   cmds.rpm = tonumber(obj.rpm)
+  -- print("cb control")
 end
 
 -- TODO: Put into VESC library
@@ -81,9 +84,7 @@ local pkt_req_values = schar(unpack(vesc.sensors()))
 local t_loop_last = 0
 local function cb_loop(t_us)
   local dt = tonumber(t_us - t_loop_last) / 1e6
-  if dt < 0.010 then
-    return false, "Looping too fast"
-  elseif not fd_vesc then
+  if not fd_vesc then
     return false, "No file descriptor"
   end
   t_loop_last = t_us
@@ -114,9 +115,10 @@ end
 local cb_tbl = {
   control = cb_control
 }
-local fd_updates = {
-  [fd_vesc] = update_read
-}
+local fd_updates = {}
+if fd_vesc then
+  fd_updates[fd_vesc] = update_read
+end
 racecar.listen{
   channel_callbacks = cb_tbl,
   fd_updates = fd_updates,

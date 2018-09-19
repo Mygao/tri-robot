@@ -410,7 +410,10 @@ local function cb_loop(t_us)
 
   result.state = my_state
 
-  log_announce(log, result, "control")
+  local ret, err = log_announce(log, result, "control")
+  if not ret then
+    print("Error!", err)
+  end
 
 end
 

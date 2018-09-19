@@ -4,6 +4,7 @@ local devname = flags.uvc or flags[1] or '/dev/video0'
 
 local time = require'unix'.time
 local racecar = require'racecar'
+racecar.init()
 local log_announce = racecar.log_announce
 -- local get_jitter = racecar.get_jitter
 
@@ -12,6 +13,7 @@ local width, height = 320, 240
 local camera = require'uvc'.init(
   devname, width, height, 'yuyv', 1, 15)
 assert(camera)
+local fd_cam = camera:descriptor()
 
 local jpeg = require'jpeg'
 local c_yuyv = jpeg.compressor('yuyv')
@@ -19,10 +21,8 @@ c_yuyv:downsampling(0)
 
 local channel = 'camera'
 local logger = require'logger'
-local log_dir = racecar.HOME.."/logs"
-local log = flags.log~=0 and assert(logger.new(channel, log_dir))
+local log = flags.log~=0 and assert(logger.new(channel, racecar.ROBOT_HOME.."/logs"))
 
-local fd_cam = camera:descriptor()
 
 local function exit()
   if log then log:close() end

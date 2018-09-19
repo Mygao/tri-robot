@@ -1,12 +1,13 @@
 #!/usr/bin/env luajit
 local racecar = require'racecar'
 local flags = racecar.parse_arg(arg)
+racecar.init()
 local log_announce = racecar.log_announce
 
 local vicon = require'vicon'
 
 local logger = require'logger'
-local log = flags.log~=0 and assert(logger.new('vicon', racecar.HOME.."/logs"))
+local log = flags.log~=0 and assert(logger.new('vicon', racecar.ROBOT_HOME.."/logs"))
 
 local skt = require'skt'
 local skt_vicon = assert(skt.open{

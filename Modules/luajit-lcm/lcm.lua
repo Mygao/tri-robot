@@ -64,17 +64,18 @@ end
 
 -- TODO: Add other file descriptors to listen for
 local function lcm_update(self, timeout)
---print("Listening on", unpack(self.fds))
+  -- print("Listening on", unpack(self.fds))
   local ret, events = skt.poll(self.fds, timeout)
   if ret == 0 then
     -- timeout reached
     return 0
   elseif not ret then
     -- Some sort of socket error
+    print"error"
     return false, events
   end
   for i, e in ipairs(events) do
-    --print("Update", i, e)
+    -- print("Update", i, e)
     if e then self.fd_updates[i](e) end
   end
   return ret
