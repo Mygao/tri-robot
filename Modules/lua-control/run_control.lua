@@ -290,7 +290,12 @@ local function update_lead(my_id)
   my_id = my_id or id_rbt
 
   for id, p in pairs(poses) do
-    lanes[id] = find_lane(p)
+    local lane, err = find_lane(p)
+    if lane then
+      lanes[id] = lane
+    else
+      print("update_lead | find_lane", err)
+    end
   end
   local my_lane = lanes[my_id]
   if not my_lane then return false, "Not in a lane" end
