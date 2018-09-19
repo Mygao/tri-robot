@@ -144,8 +144,8 @@ local function find_lane(p_vehicle, closeness)
     local dot = vector.dot(dir, vector.unit(dp))
     if dot > dot_threshold and cand.dist < dmin then
       kmin = k
-      imin = id_path
-      dmin = dist
+      imin = cand.id_path
+      dmin = cand.dist
     end
   end
 
