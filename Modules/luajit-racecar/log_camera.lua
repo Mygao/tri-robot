@@ -11,6 +11,7 @@ local log_announce = racecar.log_announce
 local jitter_tbl = racecar.jitter_tbl
 
 -- local width, height = 1344, 376
+-- local width, height = 640, 480
 local width, height = 320, 240
 local fmt = flags.fmt or 'yuyv'
 local camera = assert(uvc.init(devname, width, height, fmt, 1, 10))
@@ -19,7 +20,8 @@ local c_jpeg
 if fmt=='yuyv' then
   local jpeg = require'jpeg'
   c_jpeg = jpeg.compressor'yuyv'
-  c_jpeg:downsampling(1)
+  -- c_jpeg:downsampling(1)
+  c_jpeg:downsampling(0)
 elseif fmt == 'mjpeg' then
   c_jpeg = nil
   -- local ffi = require'ffi'

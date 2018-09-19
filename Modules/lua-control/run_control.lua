@@ -175,13 +175,13 @@ local fsm_control = cofsm.new{
   -- Approach the intersection
   {'botApproach', 'stop', 'botStop'},
   {'botApproach', 'done', 'botTurn'},
+  {'botApproach', 'turn', 'botTurn'},
   {'botGo', 'approach', 'botApproach'},
 }
 
-
 -- Need be an exit function only, really
-local function get_turn_path(stateA, stateB, event)
-  my_path = paths[desired_turn]
+local function get_turn_path(path_name)
+  my_path = paths[path_name or desired_turn]
   co_control = cocreate(control.pure_pursuit{
                         path=my_path,
                         fn_nearby=fn_nearby,
@@ -214,7 +214,11 @@ local function update_steering(pose_rbt)
   elseif result.done then
     print('DONE!', fsm_control.current_state)
     if fsm_control.current_state=='botApproach' then
-      get_turn_path()
+      if risk.d_j and risk.d_j <= 0 then
+        get_turn_path("lane_enter")
+      else
+        get_turn_path()
+      end
     else
       loop_path()
     end
@@ -253,10 +257,6 @@ end
 
 local function parse_risk(msg)
   risk = msg
-  -- Check if we have entered the intersection
-  if risk.d_j > 0 then
-    fsm_control:dispatch"botTurn"
-  end
 end
 
 local function parse_houston(msg)
@@ -352,7 +352,9 @@ local function cb_loop(t_us)
   -- For sending to the vesc
   local result = {}
   local my_state = fsm_control.current_state
-  print("my_state", my_state)
+  if my_state ~= 'botStop' then
+    print("my_state", my_state)
+  end
 
   if my_state == 'botStop' then
     vel_v = 0

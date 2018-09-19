@@ -1,7 +1,7 @@
 #!/bin/sh
-export RACECAR_HOME=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
-export LUA_PATH="$RACECAR_HOME/luajit-?/?.lua;$RACECAR_HOME/lua-?/?.lua;;"
-export LUA_CPATH="$RACECAR_HOME/lua-?/?.so;;"
+export ROBOT_HOME=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+export LUA_PATH="$ROBOT_HOME/luajit-?/?.lua;$ROBOT_HOME/lua-?/?.lua;;"
+export LUA_CPATH="$ROBOT_HOME/lua-?/?.so;;"
 export LCM_DEFAULT_URL="udpm://239.255.65.56:6556?ttl=0"
 # sudo sysctl -w net.core.rmem_max=2097152
 # sudo sysctl -w net.core.rmem_default=2097152
