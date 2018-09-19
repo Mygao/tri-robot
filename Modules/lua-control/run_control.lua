@@ -304,7 +304,8 @@ local function update_lead(my_id)
   for id, lane in pairs(lanes) do
     print(id, my_id)
     if id~=my_id and lane.name_path==my_lane.name_path then
-      local path_offset = (lane.id_path - my_lane.id_path) * lane.ds
+      -- TODO: ds should be specific to the path...
+      local path_offset = (lane.id_path - my_lane.id_path) * ds
       if path_offset > 0 and path_offset < lead_offset then
         id_lead = id
         lead_offset = path_offset
