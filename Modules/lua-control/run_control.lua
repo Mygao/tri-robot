@@ -142,7 +142,8 @@ local function find_lane(p_vehicle, closeness)
       dp = p_after - path[i]
     end
     local dot = vector.dot(dir, vector.unit(dp))
-    if dot > dot_threshold and cand.dist < dmin then
+    -- if dot > dot_threshold and cand.dist < dmin then
+    if cand.dist < dmin then
       kmin = k
       imin = cand.id_path
       dmin = cand.dist
@@ -390,7 +391,7 @@ local function cb_loop(t_us)
     vel_v = ratio * vel_v
     if lead_offset < d_near then
       print(string.format("Stopping for %s | [%.2f -> %.2f]",
-                          id_lead, ratio, result.rpm or result.duty))
+                          id_lead, ratio, vel_v))
     end
 else
 print("id_lead", lead_offset)
