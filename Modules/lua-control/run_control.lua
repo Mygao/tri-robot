@@ -22,8 +22,9 @@ local log = has_logger and flags.log~=0
 local lookahead = 0.6
 local wheel_base = 0.3
 local vel_h = false
-local vel_max = 1 --0.75
-local vel_l = 0.75 --0.5
+local vel_max = 0.75 -- 1 --0.75
+local vel_min = 0.2
+local vel_l = 0.5 -- 0.75 --0.5
 local my_path
 local co_control
 
@@ -404,21 +405,21 @@ end
     -- Make sure we go fast enough to move...
     if risk.d_j then
       print("risk", risk.d_j, risk.go)
-      if math.abs(vel_v) >= 0.25 then
-        local ratio = math.abs(risk.d_j or 1.6) / 1.6
+      if math.abs(vel_v) >= vel_min then
+        local ratio = math.abs(risk.d_j) / 1.6
         vel_v = vel_v * max(0, min(ratio, 1))
-        if vel_v < 0.25 and vel_v>=0 then
-          vel_v = 0.25
-        elseif vel_v > -0.25 and vel_v <= 0 then
-          vel_v = -0.25
+        if vel_v < vel_min and vel_v>=0 then
+          vel_v = vel_min
+        elseif vel_v > -vel_min and vel_v <= 0 then
+          vel_v = -vel_min
         end
       end
-      -- Allow going backwards
+      -- Only going backwards if no go
       if not risk.go and math.abs(risk.d_j) < 0.05 then
         vel_v = math.min(0, vel_v)
       end
     end
-    print("botApproach velocity", vel_v, "Risk:", type(risk))
+    print("botApproach velocity", vel_v, risk.d_j)
   elseif my_state == 'botTurn' then
     local pose_rbt = poses[id_rbt]
     result = update_steering(pose_rbt)
