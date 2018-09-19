@@ -112,9 +112,7 @@ local function write(self, obj, channel)
   -- TODO: Add ftell for retrying
   -- TODO: Check the return code of write
   local ret, err = self.f_log:write(entry)
-  if not ret then
-    return false, err
-  end
+  if not ret then return false, err end
   self.last_count = count
   self.n_entries_log = self.n_entries_log + 1
   return str, count, t_us

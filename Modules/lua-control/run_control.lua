@@ -5,9 +5,10 @@ local max, min = require'math'.max, require'math'.min
 local unpack = unpack or require'table'.unpack
 
 local racecar = require'racecar'
+racecar.init()
 local flags = racecar.parse_arg(arg)
-local desired_path = flags.desired or 'lane_outer'
-local my_id = assert(racecar.HOSTNAME)
+local desired_turn = flags.turn or 'turn_left'
+local id_rbt = assert(racecar.HOSTNAME)
 
 local control = require'control'
 local kdtree = require'kdtree'
@@ -15,24 +16,21 @@ local has_logger, logger = pcall(require, 'logger')
 local vector = require'vector'
 local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
-            and assert(logger.new('control', racecar.HOME.."/logs"))
+            and assert(logger.new('control', racecar.ROBOT_HOME.."/logs"))
 
-local entered_intersection, min_lane_dist, obs_lane_dist
+-- Globally accessible variables
 local lookahead = 0.6
 local wheel_base = 0.3
-local ok_to_go = true
-local ignore_risk = false
-local risk_nogo = 0.03
 local vel_h = false
 local vel_max = 0.75
 local vel_l = 0.5
+local my_path
+local co_control
 
-local cofsm = require'cofsm'
-local fsm_control = cofsm.new{
-  {'botStop', 'go', 'botGo'},
-  {'botGo', 'stop', 'botStop'}
-}
-print('fsm_control', fsm_control.current_state)
+-- Use tables, since easier
+local poses = {}
+local lanes = {}
+local risk = {}
 
 local waypoints = {}
 waypoints.lane_inner = {
@@ -68,25 +66,8 @@ for k, wps in pairs(waypoints) do
   paths[k] = path
   paths[k].tree = tree
   paths[k].length = length
+  paths[k].ds = ds
 end
-
-----------------------
-local my_path
-local straight_start = false
-if desired_path:find'turn' and paths[desired_path] then
-  straight_start = true
-  my_path = paths.lane_enter
-else
-  my_path = assert(paths[desired_path], "No desired path found: "..tostring(desired_path))
-end
--- local env = {
---   viewBox = {-3, -5.5, 7, 9},
---   observer = vector.pose(),
---   time_interval = 0.1,
---   speed = 0.1,
---   lanes = {waypoints.lane_inner, waypoints.lane_outer},
---   trajectory_turn = {waypoints.traj_left_turn, waypoints.traj_right_turn},
--- }
 
 -- meters
 local threshold_close = tonumber(flags.threshold_close) or 1
@@ -123,83 +104,59 @@ local function fn_nearby(id_last, p_lookahead)
   return id_nearby, dist_nearby
 end
 
-local co_control = cocreate(control.pure_pursuit{
-                            path=my_path,
-                            fn_nearby=fn_nearby,
-                            lookahead=lookahead})
-
 -- Given car pose
-local function find_lane(p_vehicle)
-  local kmin, dmin, imin = false, math.huge, false
+local function find_lane(p_vehicle, closeness)
+  closeness = tonumber(closeness) or 1
+  local position = {unpack(p_vehicle, 1, 2)}
+
+  local candidates = {}
   for k, path in pairs(paths) do
-    if k:match"^lane" then
-      local nearest, err = path.tree:nearest({unpack(p_vehicle, 1, 2)}, 1)
+    if k:match"^lane_" then
+      local nearest, err = path.tree:nearest(position, closeness)
       nearest = nearest and nearest[1]
-      -- TODO: Check dot product direction
       if nearest then
-        --print("Near", k, nearest.dist_sq)
-        if nearest.dist_sq < dmin then
-          imin = nearest.user
-          dmin = nearest.dist_sq
-          kmin = k
-        end
-      --else
-        --print("Not near!", err, path.tree:size(), k, p_vehicle)
-      end
-    end
-  end
-  return {name_path = kmin, id_path=imin, dist_sq=dmin}
-end
-
-local function vicon2pose(vp)
-  return vp.translation[1] / 1e3, vp.translation[2] / 1e3, vp.rotation[3]
-end
-
-local last_frame = -math.huge
-local function parse_vicon(msg)
-  -- TODO: Stale for each ID...
-  -- may be the latest for that vehicle
-  local frame = msg.frame
-  if frame < last_frame then
-    return false, "Stale data"
-  end
-  last_frame = frame
-  local poses, lanes = {}, {}
-  for id, vp in pairs(msg) do
-    if id~='frame' then
-      local p = vector.pose{vicon2pose(vp)}
-      poses[id] = p
-      lanes[id] = find_lane(p)
-    end
-  end
-  -- Update the robot pose
-  local pose_rbt = poses[my_id]
-  if not pose_rbt then return end
-  -- Check if a car is in my lane :)
-  local my_lane = lanes[my_id]
-  lanes[my_id] = nil
-
-  -- If in a lane, then see who is our lead vehicle
-  local lead_offset, lead_vehicle = math.huge, nil
-  if my_lane then
-    for id, lane in pairs(lanes) do
-      if lane.name_path==my_lane.name_path then
-        --print(lane.id_path, my_lane.id_path, lane.name_path, my_lane.name_path)
-        -- TODO: Check the relative pose between us and that ID
-        local path_offset = (lane.id_path - my_lane.id_path) * ds
-        --print(id, "in my lane", lane.id_path, "distance", path_offset)
-        if path_offset > 0 then
-          if path_offset < lead_offset then
-            lead_vehicle = id
-            lead_offset = path_offset
-          end
-        end
-  --    else
-  --      print(id, "not in my lane", lane.name_path)
+        candidates[k] = {
+          id_path = nearest.user,
+          dist = math.sqrt(nearest.dist_sq)
+        }
       end
     end
   end
 
+  -- Evaluate our candidates
+  local dir = {math.cos(p_vehicle.a), math.sin(p_vehicle.a)}
+  local dot_threshold = math.sqrt(2) / 2
+  local dmin, kmin, imin = math.huge, nil, nil
+  for k, cand in pairs(candidates) do
+    local i = cand.id_path
+    -- Note that path points are vectors already
+    local path = paths[k]
+    local p_before = path[i-1]
+    local p_after = path[i+1]
+    local dp
+    if p_before and p_after then
+      dp = p_after - p_before
+    elseif p_before then
+      dp = path[i] - p_before
+    elseif p_after then
+      dp = p_after - path[i]
+    end
+    local dot = vector.dot(dir, vector.unit(dp))
+    if dot > dot_threshold and cand.dist < dmin then
+      kmin = k
+      imin = id_path
+      dmin = dist
+    end
+  end
+
+  if kmin then
+    return {name_path = kmin, id_path=imin, dist=dmin}
+  else
+    return false, "No path found"
+  end
+end
+
+local function update_steering(pose_rbt)
   local running, result, err = coresume(co_control, pose_rbt)
   if not running then
     print("Not running", result)
@@ -214,99 +171,84 @@ local function parse_vicon(msg)
     log_announce(log, { steering = 0, rpm = 0 }, "control")
     return
   elseif result.done then
-    print("DONE!", desired_path)
-    if straight_start then
-      straight_start = false
-      my_path = paths[desired_path]
-    elseif desired_path:find"left" then
-      ignore_risk = true
-      desired_path = 'lane_inner'
-    elseif desired_path:find"right" then
-      ignore_risk = true
-      desired_path = 'lane_outer'
-    end
-    my_path = paths[desired_path]
-    -- Keep looping
-    co_control = cocreate(control.pure_pursuit{
-                          path=my_path,
-                          fn_nearby=fn_nearby,
-                          lookahead=lookahead,
-                          id_start=1
-                          })
+    fsm_control:dispatch"done"
     return
   end
 
   local steering = math.atan(result.kappa * wheel_base)
-
-  -- For sending to the vesc
   result.steering = steering
-  -- result.duty = 6
+  return result
+end
 
-  local vel_v = vel_h or vel_l
+-- Need be an exit function only, really
+local function get_turn_path(stateA, stateB, event)
+  my_path = paths[desired_turn]
+  co_control = cocreate(control.pure_pursuit{
+                        path=my_path,
+                        fn_nearby=fn_nearby,
+                        lookahead=lookahead})
+end
 
-  if fsm_control.current_state == 'botStop' then
-    -- print("stopped")
-    -- result.duty = 0
-    vel_v = 0
-  elseif desired_path=='lane_outer' or desired_path=='lane_inner' then
-    print("in path")
-    local d_stop = 0.8
-    local d_near = 1.5
-    local ratio = (lead_offset - d_stop) / (d_near - d_stop)
-    ratio = max(0, min(ratio, 1))
-    vel_v = ratio * vel_v
-    -- if lead_offset < d_near then
-    --   print(string.format("Stopping for %s | [%.2f -> %.2f]",
-    --                       lead_vehicle, ratio, result.rpm or result.duty))
-    -- end
-  elseif entered_intersection==false or straight_start then
-    if math.abs(vel_v) >= 0.25 then
-      local ratio = math.abs(d_j or 1.6) / 1.6
-      vel_v = vel_v * max(0, min(ratio, 1))
-      if vel_v < 0.25 and vel_v>=0 then
-        vel_v = 0.25 
-      elseif vel_v > -0.25 and vel_v <= 0 then
-        vel_v = -0.25
-      end
-    end
-    if not ok_to_go and math.abs(d_j) < 0.05 then vel_v = math.min(0, vel_v) end
-    print("Not entered", d_j, ok_to_go, vel_v)
-    print("vel_v", vel_v)
-  elseif entered_intersection then
-    -- TODO: Check t_clear
-    if max_t_clear then
-      min_vel_clear = paths.turn_left.length / max_t_clear
-      vel_v = math.max(vel_v, min_vel_clear)
-    end
-    print("min_vel_clear", min_vel_clear)
-    print("vel_v", vel_v)
+-- Keep looping
+local function loop_path()
+  co_control = cocreate(control.pure_pursuit{
+                        path=my_path,
+                        fn_nearby=fn_nearby,
+                        lookahead=lookahead,
+                        id_start=1
+                        })
+end
+
+local cofsm = require'cofsm'
+local fsm_control = cofsm.new{
+  -- Go is a sink, that goes to the next state
+  -- Should find lane, etc.
+  {'botStop', 'go', 'botGo'},
+  -- Stop is a sink
+  {'botGo', 'stop', 'botStop'},
+  -- Follow the lane loop
+  {'botFollowLane', 'stop', 'botStop'},
+  {'botFollowLane', 'done', 'botFollowLane', loop_path},
+  {'botGo', 'lane', 'botFollowLane'},
+  -- Turn at the intersection
+  {'botTurn', 'stop', 'botStop'},
+  {'botTurn', 'done', 'botGo'}, -- botGo will find a lane
+  {'botGo', 'turn', 'botTurn'},
+  -- Approach the intersection
+  {'botApproach', 'stop', 'botStop'},
+  {'botApproach', 'done', 'botTurn', get_turn_path},
+  {'botGo', 'approach', 'botApproach'},
+}
+
+local function vicon2pose(vp)
+  return vp.translation[1] / 1e3, vp.translation[2] / 1e3, vp.rotation[3]
+end
+
+local last_frame = -math.huge
+local function parse_vicon(msg)
+  -- Check that the data is not stale
+  -- TODO: Stale for each ID...
+  local frame = msg.frame
+  if frame < last_frame then
+    return false, "Stale data"
+  else
+    last_frame = frame
+    msg.frame = nil
   end
-  -- print('result.rpm', result.rpm)
-  vel_v = math.max(-vel_max, math.min(vel_v, vel_max))
-  result.rpm = vel_v * racecar.RPM_PER_MPS
 
-  -- Keep track of our state
-  result.current_state = fsm_control.current_state
+  -- Find the pose for each robot
+  for id, vp in pairs(msg) do
+    poses[id] = vector.pose{vicon2pose(vp)}
+  end
 
-  log_announce(log, result, "control")
-  -- For GUI plotting
-  -- env.observer = pose_rbt
-  -- log_announce(log, env, "risk")
 end
 
 local function parse_risk(msg)
-  if msg.go ~= ok_to_go then
-    ok_to_go = msg.go
-    if ignore_risk then
-      ok_to_go = true
-    elseif desired_path~='lane_outer' and desired_path~='lane_inner' then
-      print("OK to go?", ok_to_go)
-    end
+  risk = msg
+  -- Check if we have entered the intersection
+  if risk.d_j > 0 then
+    fsm_control:dispatch"botTurn"
   end
-  max_t_clear = msg.max_t_clear
-  d_j = msg.d_j
-  gap = msg.gap
-  entered_intersection = msg.d_j > 0
 end
 
 local function parse_houston(msg)
@@ -319,12 +261,11 @@ local function parse_houston(msg)
   if not ret then print("FSM", err) end
 end
 
--- local JOYSTICK_TO_DUTY = 11 / 32767
--- local JOYSTICK_TO_RPM = 30000 / 32767
 local function parse_joystick(msg)
   if type(msg.buttons)~='table' or type(msg.axes)~='table' then
     return
   end
+  -- Set the human velocity
   vel_h = vel_max * msg.axes[2] / -32767
 end
 
@@ -335,8 +276,146 @@ local cb_tbl = {
   joystick = parse_joystick,
 }
 
+-- TODO: Check the relative pose between us and that ID
+local function update_lead(my_id)
+  my_id = my_id or id_rbt
+
+  for id, p in pairs(poses) do lanes[id] = find_lane(p) end
+  local my_lane = lanes[my_id]
+  if not my_lane then return false, "Not in a lane" end
+
+  local lead_offset, id_lead = math.huge, nil
+  for id, lane in pairs(lanes) do
+    if id~=my_id and lane.name_path==my_lane.name_path then
+      local path_offset = (lane.id_path - my_lane.id_path) * lane.ds
+      if path_offset > 0 and path_offset < lead_offset then
+        id_lead = id
+        lead_offset = path_offset
+      end
+    end
+  end
+
+  if not id_lead then
+    return false, "No lead vehicle"
+  end
+
+  return id_lead, lead_offset
+end
+
+-- local function botGo()
+--   while true do
+--     print('Entry', 'botGo')
+--     -- Done Entry
+--     coroutine.yield()
+--     -- Update cycle
+--     repeat
+--       -- print('Update', 'go', sensors_latest)
+--       local evt = 'stop'
+--       local is_done = coroutine.yield(evt)
+--     until is_done
+--     -- Exit Mode
+--     print('Exit', 'botGo')
+--     -- Done Exit
+--     coroutine.yield()
+--   end
+-- end
+
+local function cb_loop(t_us)
+  -- Update the fsm
+  -- fsm_control:update()
+
+  -- Find our lane
+  -- local lane_rbt = lanes[id_rbt]
+
+  -- Use human velocity or autonomous velocity (lane velocity)
+  local vel_v = vel_h or vel_l
+
+  -- For sending to the vesc
+  local result = {}
+  local my_state = fsm_control.current_state
+
+  if my_state == 'botStop' then
+    vel_v = 0
+  elseif my_state == 'botGo' then
+    -- Find the correct path and then transition
+    local pose_rbt = poses[id_rbt]
+    if pose_rbt then
+      local info_lane, err = find_lane(pose_rbt)
+      if info_lane then
+        my_path = paths[info_lane.name_path]
+        co_control = cocreate(control.pure_pursuit{
+                              path=my_path,
+                              fn_nearby=fn_nearby,
+                              lookahead=lookahead})
+        if info_lane.name_path == 'lane_enter' then
+          fsm_control:dispatch"botApproach"
+        elseif info_lane.name_path:match'^lane' then
+          fsm_control:dispatch"botFollowLane"
+        end
+      end
+    end
+  elseif my_state == 'botFollowLane' then
+    local pose_rbt = poses[id_rbt]
+    result = update_steering(pose_rbt)
+    -- Find a lead vehicle
+    local id_lead, lead_offset = update_lead()
+    -- Slow for a lead vehicle
+    local d_stop = 0.8
+    local d_near = 1.5
+    local ratio = (lead_offset - d_stop) / (d_near - d_stop)
+    ratio = max(0, min(ratio, 1))
+    vel_v = ratio * vel_v
+    if lead_offset < d_near then
+      print(string.format("Stopping for %s | [%.2f -> %.2f]",
+                          id_lead, ratio, result.rpm or result.duty))
+    end
+  elseif my_state == 'botApproach' then
+    local pose_rbt = poses[id_rbt]
+    result = update_steering(pose_rbt)
+    -- Make sure we go fast enough to move...
+    if risk then
+      print("risk", risk.d_j, risk.go)
+      if math.abs(vel_v) >= 0.25 then
+        local ratio = math.abs(risk.d_j or 1.6) / 1.6
+        vel_v = vel_v * max(0, min(ratio, 1))
+        if vel_v < 0.25 and vel_v>=0 then
+          vel_v = 0.25
+        elseif vel_v > -0.25 and vel_v <= 0 then
+          vel_v = -0.25
+        end
+      end
+      -- Allow going backwards
+      if not risk.go and math.abs(risk.d_j) < 0.05 then
+        vel_v = math.min(0, vel_v)
+      end
+    end
+    print("botApproach velocity", vel_v, "Risk:", type(risk))
+  elseif my_state == 'botTurn' then
+    local pose_rbt = poses[id_rbt]
+    result = update_steering(pose_rbt)
+    -- Check t_clear
+    if risk.max_t_clear then
+      local min_vel_clear = paths.turn_left.length / risk.max_t_clear
+      print("min_vel_clear", min_vel_clear)
+      vel_v = math.max(vel_v, min_vel_clear)
+    end
+    print("botTurn velocity", vel_v)
+  else
+    print("Unknown state!")
+    fsm_control:dispatch"stop"
+  end
+  -- print('result.rpm', result.rpm)
+  vel_v = math.max(-vel_max, math.min(vel_v, vel_max))
+  result.rpm = vel_v * racecar.RPM_PER_MPS
+
+  result.state = my_state
+
+  log_announce(log, result, "control")
+
+end
+
 racecar.listen{
   channel_callbacks = cb_tbl,
+  loop_rate = 100, -- 100ms loop
+  loop_fn = cb_loop
 }
-
-print("Done control!")

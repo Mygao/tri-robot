@@ -3,7 +3,7 @@ local lshift = require'bit'.lshift
 local ffi = require'ffi'
 local C = ffi.C
 
-local floor = require'math'.floor
+local ceil = require'math'.ceil
 local min = require'math'.min
 local tinsert = require'table'.insert
 
@@ -96,7 +96,7 @@ local function assemble2(self, buf, buf_len, msg_id, msg_seq)
   -- copy zero-terminated string holding the channel #
 
   -- TODO: Use size_t strnlen(const char *s, size_t maxlen);
-  local cap_sz = math.min(buf_len - buf_pos, self.LCM_MAX_CHANNEL_LENGTH)
+  local cap_sz = min(buf_len - buf_pos, self.LCM_MAX_CHANNEL_LENGTH)
   local ch_sz = tonumber(C.strnlen(buf + buf_pos, cap_sz))
   if ch_sz == cap_sz then
     return false, string.format("Bad name: %d / %d", ch_sz, cap_sz)
@@ -191,7 +191,7 @@ local function assemble3(self, buf, buf_len, msg_id, msg_seq)
 
   -- First fragment contains the channel name plus data
   if fragment_id == 0 then
-    local cap_sz = math.min(buf_len - buf_pos, self.LCM_MAX_CHANNEL_LENGTH)
+    local cap_sz = min(buf_len - buf_pos, self.LCM_MAX_CHANNEL_LENGTH)
     local ch_sz = tonumber(C.strnlen(buf + buf_pos, cap_sz))
     if ch_sz == cap_sz then
       return false, string.format("Bad name: %d / %d", ch_sz, cap_sz)
@@ -291,7 +291,7 @@ end
 local function frag3(self, channel, ch_sz, message, msg_len, msg_seq)
   -- TODO: Maximum channel size
   -- TODO: Is this wrong?
-  local fragments_in_msg = math.ceil((msg_len + ch_sz) / self.LCM3_MAX_FRAGMENT_SZ)
+  local fragments_in_msg = ceil((msg_len + ch_sz) / self.LCM3_MAX_FRAGMENT_SZ)
   if fragments_in_msg > self.MAX_NUM_FRAGMENTS then
     return false, "Message requires too many fragments"
   end

@@ -1,7 +1,7 @@
 local unpack = unpack or require'table'.unpack
 local skt = require'skt'
-local packet = require'lcm_packet'
-local lib = {packet = packet}
+local lcm_packet = require'lcm_packet'
+local lib = {}
 
 -- Add a callback for a channel
 local function lcm_register(self, channel, fn, decode)
@@ -38,14 +38,14 @@ local function update0(self, timeout)
 end
 --]]
 
-local function lcm_receive(self)
-  local str, address, port = self.skt:recv()
+-- Should poll before this
+local function lcm_receive(self, timeout)
+  local str, address, port = self.skt:recv(timeout)
   if type(str)~='string' then
-    -- Should always receive data
     return false, "No data"
   end
-  local id = port and packet.gen_id(address, port)
-  local channel, data = packet.assemble(str, #str, id)
+  local id = port and lcm_packet.gen_id(address, port)
+  local channel, data = self.partitioner:assemble(str, #str, id)
   if not channel then return false, "Bad assemble" end
   -- Run the callback
   local fn = self.callbacks[channel]
@@ -58,7 +58,7 @@ end
 
 local function lcm_send(self, channel, msg)
   local enc = msg:encode()
-  local frag = packet.fragment(channel, enc)
+  local frag = self.partitioner:fragment(channel, enc)
   return self.skt:send_all(frag)
 end
 
@@ -101,6 +101,7 @@ function lib.init(options)
     skt_lcm, err = skt.open{
       address = LCM_ADDRESS,
       port = LCM_PORT,
+      ttl = tonumber(options.ttl) or 0
     }
     if not skt_lcm then return false, err end
   end
@@ -113,6 +114,8 @@ function lib.init(options)
     send = lcm_send,
     receive = lcm_receive,
     update = lcm_update,
+    --
+    partitioner = lcm_packet.new_partitioning(options.mtu)
   }
   -- File descriptors and their on-data updates
   obj.fds = {obj.skt.fd}
