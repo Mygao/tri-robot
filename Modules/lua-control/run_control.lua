@@ -22,8 +22,8 @@ local log = has_logger and flags.log~=0
 local lookahead = 0.6
 local wheel_base = 0.3
 local vel_h = false
-local vel_max = 0.75
-local vel_l = 0.5
+local vel_max = 1 --0.75
+local vel_l = 0.75 --0.5
 local my_path
 local co_control
 
