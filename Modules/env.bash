@@ -20,5 +20,4 @@ test ! $RMEM_DEFAULT -eq $RMEM_DEFAULT_LCM && sudo sysctl -w net.core.rmem_defau
 
 # sudo apt-get install tmux nano htop libusb-1.0-0-dev
 
-
-sudo rmmod uvcvideo && sudo modprobe uvcvideo quirks=128
+# sudo rmmod uvcvideo && sudo modprobe uvcvideo quirks=128

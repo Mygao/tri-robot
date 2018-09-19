@@ -29,7 +29,7 @@ for i, name in ipairs(names) do
                -- Commands
                -- Enter -> C-m
                "tmux send-keys -t icra:vicon 'cd luajit-racecar' Enter",
-               "tmux send-keys -t icra:vicon 'luajit log_vicon.lua "..log_flag.."' Enter",
+               "tmux send-keys -t icra:vicon 'luajit run_vicon.lua "..log_flag.."' Enter",
                --
                "tmux send-keys -t icra:vesc 'cd luajit-racecar' Enter",
                "tmux send-keys -t icra:vesc 'luajit run_vesc.lua "..log_flag.."' Enter",
