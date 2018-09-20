@@ -2,10 +2,11 @@ const port = 9001;
 const ws =
     new window.WebSocket('ws://' + window.location.hostname + ':' + port);
 ws.binaryType = 'arraybuffer';
-var cur = {};
+
 document.addEventListener("DOMContentLoaded", function(event) {
 
   const munpack = msgpack5().decode;
+  var cur = {};
 
   // Camera and map images
   var img_video1 = document.getElementById('video1');

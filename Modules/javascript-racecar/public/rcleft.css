@@ -23,6 +23,12 @@ html {
 .column {
   flex: 50%;
 }
+#left{
+  flex: 25%;
+}
+#right{
+  flex: 75%;
+}
 
 #three {
   width: 100%;

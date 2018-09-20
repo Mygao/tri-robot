@@ -13,7 +13,7 @@ local has_logger, logger = pcall(require, 'logger')
 
 local log_announce = racecar.log_announce
 local log = has_logger and flags.log~=0
-            and assert(logger.new('vesc', racecar.ROBOT_HOME.."/logs"))
+            and assert(logger.new('joystick', racecar.ROBOT_HOME.."/logs"))
 
 local js = require'joystick'
 local fd_js = assert(js.open(flags.js or "/dev/input/js0", true))

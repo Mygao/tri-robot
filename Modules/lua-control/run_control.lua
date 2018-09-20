@@ -381,24 +381,26 @@ local function cb_loop(t_us)
       end
     end
   elseif my_state == 'botFollowLane' then
+    -- Go at least the lane speed
+    vel_v = math.min(vel_l, vel_v)
     local pose_rbt = poses[id_rbt]
     result = update_steering(pose_rbt)
     -- Find a lead vehicle
     local id_lead, lead_offset = update_lead()
     if id_lead then
-    -- Slow for a lead vehicle
-    local d_stop = 0.8
-    local d_near = 1.5
-    local ratio = (lead_offset - d_stop) / (d_near - d_stop)
-    ratio = max(0, min(ratio, 1))
-    vel_v = ratio * vel_v
-    if lead_offset < d_near then
-      print(string.format("Stopping for %s | [%.2f -> %.2f]",
-                          id_lead, ratio, vel_v))
+      -- Slow for a lead vehicle
+      local d_stop = 0.8
+      local d_near = 1.5
+      local ratio = (lead_offset - d_stop) / (d_near - d_stop)
+      ratio = max(0, min(ratio, 1))
+      vel_v = ratio * vel_v
+      if lead_offset < d_near then
+        print(string.format("Stopping for %s | [%.2f -> %.2f]",
+                            id_lead, ratio, vel_v))
+      end
+    else
+      print("id_lead", lead_offset)
     end
-else
-print("id_lead", lead_offset)
-end
   elseif my_state == 'botApproach' then
     local pose_rbt = poses[id_rbt]
     result = update_steering(pose_rbt)
